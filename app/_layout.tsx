@@ -14,6 +14,7 @@ import { nIf } from '@/lib/utils'
 import { applyPalette, getDynamicPalette } from '@/lib/dynamic-palette'
 import { dynamicPalette$ } from '@/lib/theme'
 import { syncFeedNotificationTask } from '@/lib/feed-notifications'
+import { AccessGate } from '@/components/access/AccessGate'
 
 function RootLayoutContent() {
   const feedsEnabled = useValue(settings$.feedsEnabled)
@@ -66,7 +67,9 @@ function RootLayoutContent() {
         !pictureInPicture,
         <View className={isDark ? 'bg-zinc-800' : 'bg-zinc-100'} style={{ height: insets.top, zIndex: 10 }} />,
       )}
-      <Slot />
+      <AccessGate>
+        <Slot />
+      </AccessGate>
       {nIf(
         !pictureInPicture,
         <View className={isDark ? 'bg-zinc-800' : 'bg-zinc-100'} style={{ height: insets.bottom }} />,

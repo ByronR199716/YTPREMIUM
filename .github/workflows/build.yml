@@ -1,64 +1,95 @@
-name: Build APK
+name: Compilar APK (YTPremium)
 
+# Se ejecuta al subir cambios a main, o a mano desde la pestaña "Actions".
 on:
-  push:
-    tags:
-      - v*
   workflow_dispatch:
+  push:
+    branches: [ 'main' ]
+    paths-ignore:
+      - '**.md'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-apk
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v6
+      - name: Revisar secretos de firma
+        env:
+          BASE_64_SIGNING_KEY: ${{ secrets.BASE_64_SIGNING_KEY }}
+          KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
+          ALIAS: ${{ secrets.ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          for v in BASE_64_SIGNING_KEY KEY_STORE_PASSWORD ALIAS KEY_PASSWORD; do
+            if [ -z "${!v}" ]; then echo "::error::Falta el secreto $v (Settings > Secrets and variables > Actions)"; exit 1; fi
+          done
+          echo "$BASE_64_SIGNING_KEY" | base64 -d > "$RUNNER_TEMP/firma.jks"
+
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
 
       - uses: oven-sh/setup-bun@v2
 
-      - name: install and prebuild
+      - name: Instalar JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: 17
+          distribution: temurin
+
+      - name: Versión de esta compilación
+        run: |
+          # versionCode siempre creciente para que cada APK instale encima del anterior.
+          jq --argjson vc "$((100 + ${{ github.run_number }}))" --arg v "1.0.${{ github.run_number }}" \
+            '.versionCode = $vc | .version = $v' package.json > package.tmp && mv package.tmp package.json
+          echo "VERSION=1.0.${{ github.run_number }}" >> "$GITHUB_ENV"
+
+      - name: Instalar dependencias y preparar Android
         run: |
           bun link
           bun install --frozen-lockfile
           bun bundle:es
           bun expo prebuild -p android --clean --no-install
 
-      - name: build apk
-        run: ./gradlew assembleFullRelease
+      - name: Compilar APK
         working-directory: android
+        run: ./gradlew assembleFullRelease -PreactNativeArchitectures=arm64-v8a,armeabi-v7a --no-daemon
 
-      # https://github.com/r0adkll/sign-android-release/issues/84#issuecomment-1889636075
-      - name: set build tool version
-        shell: bash
-        run: |
-          BUILD_TOOL_VERSION=$(ls /usr/local/lib/android/sdk/build-tools/ | tail -n 1)
-          echo "BUILD_TOOL_VERSION=$BUILD_TOOL_VERSION" >> $GITHUB_ENV
-          echo build tool version: $BUILD_TOOL_VERSION
-          echo "VERSION_CODE=$(jq -r '.versionCode' package.json)" >> $GITHUB_ENV
-
-      - uses: r0adkll/sign-android-release@v1
-        name: sign apk
-        id: sign_apk
-        with:
-          releaseDirectory: android/app/build/outputs/apk/full/release
-          signingKeyBase64: ${{ secrets.SIGNING_KEY }}
-          alias: ${{ secrets.ALIAS }}
-          keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
-          keyPassword: ${{ secrets.KEY_PASSWORD }}
+      - name: Firmar APK
         env:
-          BUILD_TOOLS_VERSION: ${{ env.BUILD_TOOL_VERSION }}
-
-      - name: rename apk
+          KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
+          ALIAS: ${{ secrets.ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          sudo apt-get update && sudo apt-get install -y rename
-          rename 's/release-unsigned-signed/release/' *.apk
-        working-directory: android/app/build/outputs/apk/full/release
+          BT="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)"
+          mkdir -p salida
+          SRC=$(ls android/app/build/outputs/apk/full/release/*.apk | head -n 1)
+          "$BT/zipalign" -f -p 4 "$SRC" salida/alineado.apk
+          "$BT/apksigner" sign --ks "$RUNNER_TEMP/firma.jks" --ks-pass env:KEY_STORE_PASSWORD \
+            --ks-key-alias "$ALIAS" --key-pass env:KEY_PASSWORD \
+            --out "salida/YTPremium-$VERSION.apk" salida/alineado.apk
+          rm salida/alineado.apk
+          "$BT/apksigner" verify salida/*.apk
+          ls -la salida
 
-      - uses: softprops/action-gh-release@v2
-        name: upload apk
+      - name: Guardar APK en esta ejecución
+        uses: actions/upload-artifact@v4
         with:
-          body_path: metadata/en-US/changelogs/${{ env.VERSION_CODE }}04.txt
-          files: android/app/build/outputs/apk/full/release/*-release.apk
+          name: YTPremium-apk
+          path: salida/*.apk
+
+      - name: Publicar en Releases (link de descarga directo)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: YTPremium ${{ env.VERSION }}
+          body: "APK compilado automáticamente."
+          files: salida/*.apk

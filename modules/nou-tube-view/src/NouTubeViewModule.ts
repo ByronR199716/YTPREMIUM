@@ -46,6 +46,8 @@ declare class NouTubeViewModule extends NativeModule {
     edgeColor?: number | null
   }
   isSystemDesktopMode(): boolean
+  /* YTPremium: identificador estable y nombre del dispositivo (solo Android). */
+  getAccessDevice(): { id: string; name: string }
   translateText(text: string, targetLanguage: string): Promise<{ text: string; sourceLanguage?: string }>
   getTranslationSupportedLanguages(): string[]
 }

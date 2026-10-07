@@ -22,6 +22,10 @@ class NouTubeViewModule extends NativeModule {
   getSystemCaptionStyle() {
     return null
   }
+
+  getAccessDevice() {
+    return { id: '', name: 'Web' }
+  }
 }
 
 export default registerWebModule(NouTubeViewModule, 'NouTubeViewModule')

@@ -98,9 +98,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'jp.nonbili.noutube'
+    namespace 'ec.ytpremium.app'
     defaultConfig {
-        applicationId 'jp.nonbili.noutube'
+        applicationId 'ec.ytpremium.app'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 81

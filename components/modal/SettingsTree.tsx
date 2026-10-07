@@ -1,21 +1,14 @@
 import { Pressable, ScrollView, View, useColorScheme } from 'react-native'
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useState } from 'react'
+import { forwardRef, useCallback, useImperativeHandle, useState } from 'react'
 import { clsx, isWeb, nIf } from '@/lib/utils'
 import { useValue } from '@legendapp/state/react'
-import { auth$ } from '@/states/auth'
 import { settings$ } from '@/states/settings'
 import { t } from 'i18next'
-import { capitalize } from 'es-toolkit'
 import MaterialIcons, { type MaterialIconsIconName } from '@react-native-vector-icons/material-icons'
-import { queryClient } from '@/lib/query/client'
-import { getReleaseFeedQuery } from '@/lib/query/changelog'
-import { mainClient } from '@/lib/main-client'
-import { showToast } from '@/lib/toast'
 import { NouText } from '../NouText'
 import { NouLink } from '../link/NouLink'
 import { SettingsModalTabSync } from './SettingsModalTabSync'
 import {
-  SettingsActionRow,
   SettingsAppearanceContent,
   SettingsPreferencesContent,
   SettingsToolsContent,
@@ -26,13 +19,8 @@ import { SettingsChangelogContent } from './SettingsModalTabChangelog'
 import { SettingsUserStylesContent } from './SettingsUserStylesContent'
 import { SettingsBlocklistContent } from './SettingsBlocklistContent'
 import { useTwColor } from '@/lib/theme'
+import { AccessStatusSection } from '../access/AccessStatusSection'
 
-const repo = 'https://github.com/nonbili/NouTube'
-const donateLinks = [
-  { label: 'GitHub Sponsors', detail: 'github.com/sponsors/rnons', url: 'https://github.com/sponsors/rnons' },
-  { label: 'Liberapay', detail: 'liberapay.com/rnons', url: 'https://liberapay.com/rnons' },
-  { label: 'PayPal', detail: 'paypal.me/rnons', url: 'https://paypal.me/rnons' },
-]
 export const surfaceCls =
   'overflow-hidden rounded-[24px] bg-white dark:bg-zinc-900'
 export const sectionLabelCls = 'mb-2 px-1 text-[11px] uppercase tracking-[0.18em] text-zinc-600 dark:text-zinc-500'
@@ -128,10 +116,6 @@ export const SettingsExternalRow: React.FC<{
   )
 }
 
-function formatPlanLabel(plan?: string) {
-  return plan ? capitalize(plan) : 'Free'
-}
-
 export interface SettingsTreeHandle {
   /* Pops one page, or reports that the tree is already at its root and the
    * host has to decide what a back press means. */
@@ -160,14 +144,11 @@ export const SettingsTree = forwardRef<
 >(({ version, onExit, renderSync, showShellTools = true }, ref) => {
   const tw = useTwColor()
   const theme = useValue(settings$.theme)
-  const { user, plan } = useValue(auth$)
   const colorScheme = useColorScheme()
   const isDark = colorScheme !== 'light'
   const [pageStack, setPageStack] = useState<SettingsPage[]>(['home'])
   const [importingList, setImportingList] = useState(false)
   const [importingTakeout, setImportingTakeout] = useState(false)
-  const [updateSupported, setUpdateSupported] = useState(false)
-  const [checkingUpdate, setCheckingUpdate] = useState(false)
 
   const currentPage = pageStack[pageStack.length - 1]
   const canGoBack = pageStack.length > 1
@@ -177,25 +158,6 @@ export const SettingsTree = forwardRef<
       : theme === 'light'
         ? t('settings.theme.light')
         : t('settings.theme.system')
-
-  useEffect(() => {
-    void queryClient.prefetchQuery(getReleaseFeedQuery())
-  }, [])
-
-  useEffect(() => {
-    let active = true
-    mainClient
-      .isUpdateSupported()
-      .then((supported) => {
-        if (active) setUpdateSupported(supported)
-      })
-      .catch(() => {
-        if (active) setUpdateSupported(false)
-      })
-    return () => {
-      active = false
-    }
-  }, [])
 
   const pushPage = useCallback((page: SettingsPage) => {
     setPageStack((stack) => (stack[stack.length - 1] === page ? stack : stack.concat(page)))
@@ -219,25 +181,6 @@ export const SettingsTree = forwardRef<
     [pageStack.length, popPage],
   )
 
-  const handleCheckForUpdate = useCallback(async () => {
-    setCheckingUpdate(true)
-    try {
-      const result = await mainClient.checkForUpdate()
-      if (result.status === 'available') {
-        showToast(t('update.downloading', { version: result.version }))
-      } else if (result.status === 'error') {
-        showToast(result.message || t('update.error'))
-      } else {
-        showToast(t('update.upToDate'))
-      }
-    } catch (e: any) {
-      console.error('checkForUpdate failed', e)
-      showToast(e.message || t('update.error'))
-    } finally {
-      setCheckingUpdate(false)
-    }
-  }, [])
-
   const pageMeta = {
     home: { title: t('settings.label') },
     content: { title: t('settings.preferences') },
@@ -257,6 +200,8 @@ export const SettingsTree = forwardRef<
       case 'home':
         return (
           <View className="gap-8">
+            <AccessStatusSection />
+
             <SettingsSection label={t('settings.groupYouTube')}>
               <View className={surfaceCls}>
                 <SettingsNavRow
@@ -303,13 +248,6 @@ export const SettingsTree = forwardRef<
             <SettingsSection label={t('settings.tools')}>
               <View className={surfaceCls}>
                 <SettingsNavRow
-                  title={t('sync.label')}
-                  description={user?.email || t('settings.syncHintShort')}
-                  icon="sync"
-                  meta={formatPlanLabel(plan)}
-                  onPress={() => pushPage('sync')}
-                />
-                <SettingsNavRow
                   title={t('settings.transfer')}
                   description={t('settings.transferHint')}
                   icon="import-export"
@@ -337,12 +275,6 @@ export const SettingsTree = forwardRef<
                   icon="info-outline"
                   meta={`v${version}`}
                   onPress={() => pushPage('about')}
-                />
-                <SettingsNavRow
-                  title={t('changelog.label')}
-                  description={t('changelog.hint')}
-                  icon="history"
-                  onPress={() => pushPage('changelog')}
                   isLast
                 />
               </View>
@@ -389,45 +321,16 @@ export const SettingsTree = forwardRef<
           <View className="gap-6">
             <View className="rounded-[28px] bg-white dark:bg-zinc-900 px-5 py-5">
               <NouText className="text-[11px] uppercase tracking-[0.18em] text-zinc-600 dark:text-zinc-500">
-                NouTube
+                YTPremium
               </NouText>
               <NouText className="mt-2 text-xl font-semibold tracking-tight">v{version}</NouText>
             </View>
 
-            {updateSupported ? (
-              <SettingsSection label={t('about.updates')}>
-                <View className={surfaceCls}>
-                  <SettingsActionRow
-                    label={t('update.check')}
-                    description={t('update.checkHint')}
-                    icon="system-update"
-                    onPress={handleCheckForUpdate}
-                    loading={checkingUpdate}
-                    isLast
-                  />
-                </View>
-              </SettingsSection>
-            ) : null}
-
-            <SettingsSection label={t('about.code')}>
-              <View className={surfaceCls}>
-                <SettingsExternalRow title="GitHub" detail="github.com/nonbili/NouTube" href={repo} icon="code" isLast />
-              </View>
-            </SettingsSection>
-
-            <SettingsSection label={t('about.donate')}>
-              <View className={surfaceCls}>
-                {donateLinks.map((item, index) => (
-                  <SettingsExternalRow
-                    key={item.url}
-                    title={item.label}
-                    detail={item.detail}
-                    href={item.url}
-                    isLast={index === donateLinks.length - 1}
-                  />
-                ))}
-              </View>
-            </SettingsSection>
+            <View className="rounded-[24px] bg-white dark:bg-zinc-900 px-5 py-4">
+              <NouText className="text-sm leading-5 text-zinc-600 dark:text-zinc-400">
+                Basado en NouTube, software libre bajo licencia AGPL-3.0.
+              </NouText>
+            </View>
           </View>
         )
 

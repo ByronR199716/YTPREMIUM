@@ -17,17 +17,16 @@ const intentFilters = [
 
 module.exports = ({ config }: { config: ExpoConfig }) => {
   return {
-    name: 'NouTube',
-    slug: 'noutube',
+    name: 'YTPremium',
+    slug: 'ytpremium',
     version,
     icon: './assets/images/icon.png',
-    scheme: 'noutube',
+    scheme: 'ytpremium',
     userInterfaceStyle: 'automatic',
     newArchEnabled: true,
     ios: {
       supportsTablet: true,
-      bundleIdentifier: 'jp.nonbili.noutube',
-      appleTeamId: 'NXW8RMPV8L',
+      bundleIdentifier: 'ec.ytpremium.app',
       buildNumber,
       infoPlist: {
         // The player keeps going with the screen off and on the lock screen.
@@ -41,10 +40,10 @@ module.exports = ({ config }: { config: ExpoConfig }) => {
       adaptiveIcon: {
         foregroundImage: './assets/images/adaptive-icon.png',
         monochromeImage: './assets/images/monochrome-icon.png',
-        backgroundColor: '#ffffff',
+        backgroundColor: '#d91e2e',
       },
       predictiveBackGestureEnabled: false,
-      package: 'jp.nonbili.noutube',
+      package: 'ec.ytpremium.app',
       intentFilters,
     },
     web: {
@@ -85,7 +84,7 @@ module.exports = ({ config }: { config: ExpoConfig }) => {
         'expo-sharing',
         {
           // No ios entry: the share extension needs the app group
-          // group.jp.nonbili.noutube registered with the Apple team before it
+          // group.ec.ytpremium.app registered with the Apple team before it
           // can be signed. Until then lib/incoming-share.ios.ts stands in.
           android: {
             enabled: true,

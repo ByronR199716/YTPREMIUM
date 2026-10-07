@@ -43,7 +43,7 @@ TaskManager.defineTask(TASK_NAME, async () => {
 })
 
 async function applyNotificationLanguage() {
-  const language = settings$.language.get() || resolveI18nLanguageFromExpoLocale(getLocales()[0]) || 'en'
+  const language = settings$.language.get() || resolveI18nLanguageFromExpoLocale(getLocales()[0]) || 'es'
   await changeLanguage(language)
 }
 

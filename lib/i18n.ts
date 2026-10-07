@@ -122,7 +122,7 @@ export const normalizeI18nLanguage = (value?: string | null): SupportedI18nLangu
 // eslint-disable-next-line import/no-named-as-default-member
 i18n.use(initReactI18next).init({
   /* debug: true, */
-  fallbackLng: 'en',
+  fallbackLng: 'es',
   supportedLngs: Object.keys(resources),
   resources,
   interpolation: { escapeValue: false },

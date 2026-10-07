@@ -143,6 +143,20 @@ class NouTubeViewModule : Module() {
       readCaptionStyle()
     }
 
+    // YTPremium: identificador y nombre del dispositivo para el acceso por códigos.
+    Function("getAccessDevice") {
+      val ctx = appContext.reactContext?.applicationContext
+      val raw = ctx?.let {
+        android.provider.Settings.Secure.getString(it.contentResolver, android.provider.Settings.Secure.ANDROID_ID)
+      }
+      // 9774d56d682e549c es un valor repetido en algunos equipos antiguos defectuosos
+      val id = if (raw.isNullOrBlank() || raw == "9774d56d682e549c") "" else "and-$raw"
+      val maker = android.os.Build.MANUFACTURER.orEmpty().replaceFirstChar { it.uppercase() }
+      val model = android.os.Build.MODEL.orEmpty()
+      val name = if (model.startsWith(maker, ignoreCase = true)) model else "$maker $model".trim()
+      mapOf("id" to id, "name" to name.take(80))
+    }
+
     Function("isSystemDesktopMode") {
       isSystemDesktopMode(appContext.currentActivity ?: appContext.reactContext)
     }

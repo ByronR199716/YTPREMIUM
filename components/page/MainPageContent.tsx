@@ -5,7 +5,6 @@ import { tabs$, type Tab } from '@/states/tabs'
 import { queue$ } from '@/states/queue'
 import { settings$ } from '@/states/settings'
 import { bookmarks$, newBookmark } from '@/states/bookmarks'
-import { createLogger } from '@/lib/log'
 import { EmbedVideoModal } from '@/components/modal/EmbedVideoModal'
 import NouTubeViewModule, { NouTubeView } from '@/modules/nou-tube-view'
 import { StyleSheet, View } from 'react-native'
@@ -19,9 +18,6 @@ import type { WebviewTag } from 'electron'
 import { NouHeader } from '../header/NouHeader'
 import { WebviewContainer } from './webview-container'
 import { PageLoadError } from './PageLoadError'
-import { syncSupabase } from '@/lib/supabase/sync'
-import { auth$ } from '@/states/auth'
-import { useMe } from '@/lib/hooks/useMe'
 import { ObservableHint } from '@legendapp/state'
 import { mainClient } from '@/lib/main-client'
 import { onDownloadProgress } from '@/lib/download-progress'
@@ -59,7 +55,6 @@ import {
 } from '@/lib/split-view'
 
 let restored = false
-const logger = createLogger('sync')
 
 const onScroll = ({
   dy,
@@ -449,7 +444,6 @@ export const MainPageContent: React.FC<{ contentJs: string }> = ({ contentJs }) 
     `window.NouTubeUserStyles = ${JSON.stringify(getUserStylesSnapshot())};` +
     `window.NouTubeBlocklist = ${JSON.stringify(getBlocklistSnapshot(blocklistState))};` +
     `window.NouTubeDownloads = ${isIos ? 'false' : 'true'};`
-  const { userId, me } = useMe()
   const userAgent = resolveUserAgent(
     isIos ? 'ios' : isWeb ? window.electron.process.platform : 'android',
     customUserAgent,
@@ -593,23 +587,6 @@ export const MainPageContent: React.FC<{ contentJs: string }> = ({ contentJs }) 
     ui$.url.set(home)
   }, [])
 
-  useEffect(() => {
-    auth$.plan.set(me?.plan)
-    const runSync = () => {
-      void syncSupabase().catch((error) => {
-        logger.error('syncSupabase failed', error)
-      })
-    }
-
-    if (userId && me?.plan && me.plan !== 'free') {
-      runSync()
-      const timer = setInterval(
-        () => runSync(),
-        5 * 60 * 1000, // 5 minutes
-      )
-      return () => clearInterval(timer)
-    }
-  }, [me?.plan, userId])
 
   const onMessage = useCallback(
     async (type: string, data: any, source: 'browse' | 'player' = 'browse') => {

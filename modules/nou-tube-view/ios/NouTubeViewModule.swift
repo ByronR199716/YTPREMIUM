@@ -43,6 +43,11 @@ public final class NouTubeViewModule: Module {
     // Desktop mode is an Android-on-an-external-display concept.
     Function("isSystemDesktopMode") { false }
 
+    Function("getAccessDevice") { () -> [String: String] in
+      let id = UIDevice.current.identifierForVendor?.uuidString ?? ""
+      return ["id": id.isEmpty ? "" : "ios-\(id)", "name": UIDevice.current.model]
+    }
+
     // The window follows the system appearance; the JS theme drives the app
     // chrome on its own.
     Function("setTheme") { (_: String?) in }
