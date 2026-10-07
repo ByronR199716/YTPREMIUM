@@ -17,6 +17,7 @@ concurrency:
 
 jobs:
   build:
+    name: Compilar, firmar y publicar
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
