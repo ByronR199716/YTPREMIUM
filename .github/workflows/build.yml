@@ -1,6 +1,6 @@
 name: Compilar APK (YTPremium)
 
-# Se ejecuta al subir cambios a main, o a mano desde la pestaña "Actions".
+# Se ejecuta al subir cambios a main, o a mano desde la pestaña "Actions" (botón Run workflow).
 on:
   workflow_dispatch:
   push:
