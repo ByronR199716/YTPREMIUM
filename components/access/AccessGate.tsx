@@ -61,7 +61,9 @@ const RedeemScreen = () => {
   }
 
   return (
-    <KeyboardAvoidingView className="flex-1 bg-zinc-950" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    // Android moderno dibuja la app de borde a borde y ya no achica la ventana al abrir
+    // el teclado, así que también aquí hay que dejarle espacio a mano.
+    <KeyboardAvoidingView className="flex-1 bg-zinc-950" behavior="padding">
       <ScrollView
         contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 28 }}
         keyboardShouldPersistTaps="handled"

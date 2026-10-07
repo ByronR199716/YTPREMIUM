@@ -18,6 +18,7 @@ import { installSystemCaptionStyle } from './captions'
 import { installEncodedAuthorNameFix } from './author-names'
 import { guardMediaSessionHandlers, installBackgroundGuard } from './background-guard'
 import { installSplitView, navigateWatch, setMuted, setNativeMini } from './split-view'
+import { installHideOpenAppButton } from './open-app'
 
 try {
   if ((window as any).NouTubePreferH264) {
@@ -43,6 +44,7 @@ try {
   interceptClipboard()
   installWatchNavigation()
   installSplitView()
+  installHideOpenAppButton()
 
   if (!window.electron) {
     intercept()
