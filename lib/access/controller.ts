@@ -143,6 +143,7 @@ function lock(message: string | null) {
 }
 
 const EXPIRED = 'Tu código venció. Pide uno nuevo para seguir usando YTPremium.'
+const TRIAL_USED = 'Ya usaste tu prueba gratis en este dispositivo. Para seguir usando YTPremium, pide un código.'
 
 function messageFor(reason: string) {
   switch (reason) {
@@ -168,7 +169,9 @@ function applyResult(code: string, r: ServerAccess) {
     if (s) unlock(s)
   } else {
     clearSession()
-    lock(messageFor(r.reason))
+    // Una segunda prueba en el mismo teléfono: el servidor responde "expired" sin fecha
+    // (un código vencido de verdad siempre trae su fecha de vencimiento).
+    lock(r.reason === 'expired' && r.expiresMs == null ? TRIAL_USED : messageFor(r.reason))
   }
 }
 
