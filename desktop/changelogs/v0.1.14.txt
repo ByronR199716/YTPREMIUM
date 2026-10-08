@@ -1,2 +1,0 @@
-- Add Login YouTube button to workaround failure in webview
-- Fix page url when restoring last playing

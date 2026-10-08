@@ -1,2 +1,0 @@
-- Add a button to open youtube/noutube url directly
-- Prevent restoring progress to the end

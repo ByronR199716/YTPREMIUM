@@ -7,6 +7,8 @@ on:
     branches: [ 'main' ]
     paths-ignore:
       - '**.md'
+      - 'desktop/**'
+      - '.github/workflows/desktop.yml'
 
 permissions:
   contents: write

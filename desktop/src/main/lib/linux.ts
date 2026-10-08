@@ -5,7 +5,7 @@ import os from 'os'
 import path from 'path'
 
 const templateDesktopFile = (exec: string, icon: string) => `[Desktop Entry]
-Name=NouTube
+Name=YTPremium
 Exec=${exec} %u
 Type=Application
 Categories=AudioVideo;Network;Utility;
@@ -21,7 +21,7 @@ export async function genDesktopFile() {
   const iconSrcPath = path.join(__dirname, '../../../app.asar.unpacked/resources/icon.png')
   const iconDstDir = path.join(os.homedir(), '.local/share/icons')
   await fs.mkdir(iconDstDir, { recursive: true })
-  const iconDstpath = path.join(iconDstDir, 'noutube.png')
+  const iconDstpath = path.join(iconDstDir, 'ytpremium.png')
   await fs.copyFile(iconSrcPath, iconDstpath)
 
   const desktopPath = path.join(os.homedir(), '.local/share/applications/noutube.desktop')

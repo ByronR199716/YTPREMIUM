@@ -7,6 +7,9 @@ import { AccessConfig } from '@/lib/access/config'
 
 const REDEEM_COLOR = '#7C4DFF'
 const LOGO_RED = '#d91e2e'
+// Versión de escritorio (react-native-web): ocupar toda la ventana.
+const FULL = Platform.OS === 'web' ? ({ height: '100%' } as const) : undefined
+const MONO = Platform.OS === 'android' ? 'monospace' : Platform.OS === 'web' ? 'Consolas, Menlo, monospace' : 'Menlo'
 
 export const LogoMark: React.FC<{ size?: number }> = ({ size = 96 }) => (
   <Svg width={size} height={size} viewBox="0 0 1024 1024">
@@ -42,7 +45,7 @@ export const AccessGate: React.FC<React.PropsWithChildren> = ({ children }) => {
   }
   if (status === 'checking') {
     return (
-      <View className="flex-1 items-center justify-center bg-zinc-950">
+      <View className="flex-1 items-center justify-center bg-zinc-950" style={FULL}>
         <LogoMark size={88} />
         <ActivityIndicator style={{ marginTop: 32 }} color="#ffffff" />
       </View>
@@ -63,18 +66,18 @@ const RedeemScreen = () => {
   return (
     // Android moderno dibuja la app de borde a borde y ya no achica la ventana al abrir
     // el teclado, así que también aquí hay que dejarle espacio a mano.
-    <KeyboardAvoidingView className="flex-1 bg-zinc-950" behavior="padding">
+    <KeyboardAvoidingView className="flex-1 bg-zinc-950" behavior="padding" style={FULL}>
       <ScrollView
         contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 28 }}
         keyboardShouldPersistTaps="handled"
       >
-        <View className="items-center">
+        <View className="w-full items-center self-center" style={{ maxWidth: 440 }}>
           <LogoMark size={104} />
           <Text className="mt-6 text-3xl font-bold text-white">{AccessConfig.APP_TITLE}</Text>
           <Text className="mt-2 text-base text-zinc-400">Ingresa tu código de acceso</Text>
         </View>
 
-        <View className="mt-10">
+        <View className="mt-10 w-full self-center" style={{ maxWidth: 440 }}>
           <Text className="mb-2 px-1 text-sm text-zinc-400">Código</Text>
           <TextInput
             value={code}
@@ -89,7 +92,7 @@ const RedeemScreen = () => {
             onSubmitEditing={onSubmit}
             editable={!busy}
             className="rounded-2xl border border-zinc-700 bg-zinc-900 px-4 py-4 text-center text-xl tracking-widest text-white"
-            style={{ fontFamily: Platform.OS === 'android' ? 'monospace' : 'Menlo' }}
+            style={{ fontFamily: MONO }}
           />
 
           {message ? <Text className="mt-4 px-1 text-center text-sm leading-5 text-red-400">{message}</Text> : null}

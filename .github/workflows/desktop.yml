@@ -1,0 +1,101 @@
+name: Compilar Windows (YTPremium PC)
+
+# Instalador de Windows de YTPremium (carpeta desktop/, basada en NouTube Desktop).
+# Se ejecuta al subir cambios que afectan a la versión de escritorio, o a mano
+# desde la pestaña "Actions" (botón Run workflow).
+on:
+  workflow_dispatch:
+  push:
+    branches: [ 'main' ]
+    paths:
+      - 'desktop/**'
+      - 'components/**'
+      - 'lib/**'
+      - 'states/**'
+      - 'content/**'
+      - 'locales/**'
+      - 'assets/**'
+      - 'modules/nou-tube-view/src/**'
+      - 'package.json'
+      - 'bun.lock'
+      - '.github/workflows/desktop.yml'
+      - '!**.md'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-desktop
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Compilar instalador y publicar
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Versión de esta compilación
+        run: |
+          VERSION="1.0.${{ github.run_number }}"
+          node -e "const f='desktop/package.json';const p=require('./'+f);p.version='$VERSION';require('fs').writeFileSync(f,JSON.stringify(p,null,2)+'\n')"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Instalar dependencias
+        run: |
+          bun link
+          bun install --frozen-lockfile
+          bun bundle:es
+
+      - name: Compilar instalador (.exe)
+        working-directory: desktop
+        env:
+          # Sin certificado de firma de código: Windows SmartScreen avisará la primera vez.
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: |
+          npx electron-vite build
+          npx electron-builder --win --publish never
+
+      - name: Preparar archivos
+        run: |
+          mkdir -p salida
+          SRC=$(ls desktop/dist/*-Setup.exe | head -n 1)
+          cp "$SRC" "salida/YTPremium-$VERSION-Setup.exe"
+          cp "$SRC" "salida/YTPremium-Setup.exe"
+          ls -la salida
+
+      - name: Guardar instalador en esta ejecución
+        uses: actions/upload-artifact@v4
+        with:
+          name: YTPremium-Windows
+          path: salida/YTPremium-${{ env.VERSION }}-Setup.exe
+
+      - name: Publicar versión (pc-build-N)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: pc-build-${{ github.run_number }}
+          name: YTPremium PC ${{ env.VERSION }}
+          body: "Instalador de Windows compilado automáticamente."
+          files: salida/YTPremium-${{ env.VERSION }}-Setup.exe
+          make_latest: false
+
+      # Enlace fijo para el panel:
+      # https://github.com/ByronR199716/YTPREMIUM/releases/download/pc/YTPremium-Setup.exe
+      - name: Actualizar enlace fijo (release "pc")
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: pc
+          name: YTPremium PC (última versión)
+          body: "Última versión del instalador de Windows: ${{ env.VERSION }}. Este enlace siempre descarga la más reciente."
+          files: salida/YTPremium-Setup.exe
+          overwrite_files: true
+          make_latest: false

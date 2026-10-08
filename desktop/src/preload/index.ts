@@ -1,8 +1,13 @@
-import { contextBridge } from 'electron'
+import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 
-// Custom APIs for renderer
-// const api = {}
+// Acceso por códigos (YTPremium): ID de esta PC. Solo para la ventana de la app,
+// no para las páginas de YouTube (este preload también se carga en los webview).
+const ACCESS_DEVICE_CHANNEL = 'ytpremium-access-device'
+const isAppPage = location.protocol === 'file:' || location.hostname === 'localhost'
+const ytpremium = {
+  getAccessDevice: (): { id: string; name: string } => ipcRenderer.sendSync(ACCESS_DEVICE_CHANNEL),
+}
 
 // Use `contextBridge` APIs to expose Electron APIs to
 // renderer only if context isolation is enabled, otherwise
@@ -10,7 +15,7 @@ import { electronAPI } from '@electron-toolkit/preload'
 if (process.contextIsolated) {
   try {
     contextBridge.exposeInMainWorld('electron', electronAPI)
-    // contextBridge.exposeInMainWorld('api', api)
+    if (isAppPage) contextBridge.exposeInMainWorld('ytpremium', ytpremium)
   } catch (error) {
     console.error(error)
   }
@@ -18,5 +23,5 @@ if (process.contextIsolated) {
   // @ts-ignore (define in dts)
   window.electron = electronAPI
   // @ts-ignore (define in dts)
-  // window.api = api
+  if (isAppPage) window.ytpremium = ytpremium
 }

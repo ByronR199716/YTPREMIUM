@@ -24,6 +24,9 @@ class NouTubeViewModule extends NativeModule {
   }
 
   getAccessDevice() {
+    // Versión de escritorio (Electron): el preload expone el ID de la PC.
+    const desktop = (globalThis as any).ytpremium?.getAccessDevice?.()
+    if (desktop?.id) return desktop as { id: string; name: string }
     return { id: '', name: 'Web' }
   }
 }

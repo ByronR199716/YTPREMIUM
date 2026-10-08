@@ -14,5 +14,5 @@ export async function openLoginWindow() {
     },
   })
   await win.loadURL('https://www.youtube.com')
-  win.setTitle('After login, close this window and reload/restart NouTube')
+  win.setTitle('Cuando inicies sesión, cierra esta ventana y vuelve a abrir YTPremium')
 }

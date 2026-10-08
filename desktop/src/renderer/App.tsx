@@ -5,6 +5,7 @@ import { useObserveEffect } from '@legendapp/state/react'
 import { useEffect } from 'react'
 import { initUiChannel } from './ipc/ui'
 import { handleShortcuts } from './lib/shortcuts'
+import { AccessGate } from 'noutube/components/access/AccessGate'
 
 function App(): React.JSX.Element {
   useEffect(() => {
@@ -15,7 +16,9 @@ function App(): React.JSX.Element {
 
   return (
     <>
-      <MainPage contentJs={contentJs} />
+      <AccessGate>
+        <MainPage contentJs={contentJs} />
+      </AccessGate>
       <Toaster position="bottom-right" />
     </>
   )

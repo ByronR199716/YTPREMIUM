@@ -1,2 +1,0 @@
-- support opening external link in system browser
-- add context menu

@@ -1,3 +1,0 @@
-- Support feeds for bookmarked channels
-- Add back/forward button
-- Support clearing webview data

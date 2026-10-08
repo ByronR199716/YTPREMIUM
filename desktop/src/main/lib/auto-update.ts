@@ -2,10 +2,10 @@ import electronUpdater, { type AppUpdater } from 'electron-updater'
 import { is } from '@electron-toolkit/utils'
 import { uiClient } from 'main/ipc/ui'
 
-// Auto-update is available for the regular installers. 'portable' builds
-// (flatpak, portable archives) are updated through their own channels, so the
-// updater is disabled for them and the manual "check for updates" UI is hidden.
-export const isUpdateSupported = import.meta.env.VITE_BUILD_TARGET != 'portable' && process.env.SNAP === undefined
+// YTPremium: actualización automática DESACTIVADA. La del original descargaría
+// NouTube (sin acceso por códigos) desde el repositorio del autor. Las nuevas
+// versiones se reparten con el enlace del panel.
+export const isUpdateSupported = false
 
 export type UpdateCheckResult =
   | { status: 'not-available' }

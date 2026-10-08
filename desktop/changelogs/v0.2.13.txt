@@ -1,3 +1,0 @@
-- support exporting/importing bookmarks as CSV with folders
-- support http and socks proxy
-- fix injected menu layout

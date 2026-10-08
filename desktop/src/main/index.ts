@@ -6,12 +6,12 @@ import { setMainWindow } from './lib/main-window'
 import { bindDeeplink } from './lib/deeplink'
 import { genDesktopFile } from './lib/linux'
 import { interceptHttpRequest } from './lib/intercept'
-import { checkForUpdateOnStart } from './lib/auto-update'
 import { initMainChannel } from './ipc/main'
 import contextMenu from 'electron-context-menu'
 import { getUserAgent } from '@/lib/useragent'
 import { isSupportedUrl, normalizeSupportedUrl } from '@/lib/supported-url'
 import { uiClient } from './ipc/ui'
+import { initAccessDeviceChannel } from './lib/access-device'
 
 app.userAgentFallback = getUserAgent(process.platform)
 
@@ -85,6 +85,7 @@ function createWindow(): void {
     showLookUpSelection: boolean
     showSearchWithGoogle: boolean
     showSelectAll: boolean
+    labels: Record<string, string>
     prepend: (_defaultActions: unknown, params: Electron.ContextMenuParams) => Electron.MenuItemConstructorOptions[]
   } => ({
     showCopyImage: false,
@@ -92,25 +93,42 @@ function createWindow(): void {
     showLookUpSelection: false,
     showSearchWithGoogle: false,
     showSelectAll: false,
+    labels: {
+      cut: 'Cortar',
+      copy: 'Copiar',
+      paste: 'Pegar',
+      selectAll: 'Seleccionar todo',
+      copyLink: 'Copiar enlace',
+      copyImage: 'Copiar imagen',
+      copyImageAddress: 'Copiar dirección de la imagen',
+      copyVideoAddress: 'Copiar dirección del video',
+      saveImage: 'Guardar imagen',
+      saveImageAs: 'Guardar imagen como…',
+      saveVideo: 'Guardar video',
+      saveVideoAs: 'Guardar video como…',
+      saveLinkAs: 'Guardar enlace como…',
+      inspect: 'Inspeccionar elemento',
+      services: 'Servicios',
+    },
     prepend: (_defaultActions: unknown, params: Electron.ContextMenuParams): Electron.MenuItemConstructorOptions[] => {
       const url = resolveTargetUrl(params.linkURL)
       return [
         {
-          label: 'Open Link in New Tab',
+          label: 'Abrir en pestaña nueva',
           visible: Boolean(params.linkURL) && isSupportedUrl(url),
           click: () => {
             void uiClient.openInAppTab(normalizeSupportedUrl(url))
           },
         },
         {
-          label: 'Star',
+          label: 'Guardar en favoritos',
           visible: Boolean(params.linkURL) && isSupportedUrl(url),
           click: () => {
             void uiClient.star(normalizeSupportedUrl(url), params.linkText)
           },
         },
         {
-          label: 'Picture-in-Picture',
+          label: 'Imagen en imagen',
           visible: params.mediaType === 'video',
           click: () => {
             wc.executeJavaScript(
@@ -156,11 +174,12 @@ function createWindow(): void {
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
   // Set app user model id for windows
-  electronApp.setAppUserModelId('com.electron')
+  electronApp.setAppUserModelId('ec.ytpremium.desktop')
 
   interceptHttpRequest()
 
   initMainChannel()
+  initAccessDeviceChannel()
 
   // Default open or close DevTools by F12 in development
   // and ignore CommandOrControl + R in production.
@@ -193,4 +212,3 @@ app.on('window-all-closed', () => {
 
 bindDeeplink()
 
-checkForUpdateOnStart()

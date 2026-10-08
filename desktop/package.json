@@ -1,11 +1,11 @@
 {
   "name": "noutube-desktop",
-  "productName": "NouTube",
+  "productName": "YTPremium",
   "version": "0.3.0",
-  "description": "YouTube and YouTube Music in a single app",
+  "description": "YTPremium para computadora (basado en NouTube, AGPL-3.0)",
   "main": "./out/main/index.js",
-  "author": "Nonbili Inc.",
-  "homepage": "https://github.com/nonbili/NouTube",
+  "author": "YTPremium",
+  "homepage": "https://github.com/ByronR199716/YTPREMIUM",
   "scripts": {
     "preinstall": "touch ../node_modules/noutube",
     "format": "prettier --write .",

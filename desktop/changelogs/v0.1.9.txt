@@ -1,2 +1,0 @@
-- support selecting folder in FeedModal
-- support sponsor block

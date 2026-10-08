@@ -5,5 +5,6 @@ declare global {
   interface Window {
     electron: ElectronAPI
     api: unknown
+    ytpremium?: { getAccessDevice(): { id: string; name: string } }
   }
 }
