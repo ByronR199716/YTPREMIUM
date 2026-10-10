@@ -4,11 +4,14 @@ import NouTubeViewModule from '@/modules/nou-tube-view'
 import { fetchAppUpdate, type AppUpdateInfo } from '@/lib/access/api'
 
 /**
- * YTPremium: aviso de nueva versión dentro de la app (solo Android).
+ * YTPremium: aviso de nueva versión dentro de la app (Android y PC con Windows).
  *
- * El admin publica la versión en el panel (Servicios > Actualizaciones de las apps, fila ytpremium/android).
- * Números: el panel guarda 100 + N (release build-N); el APK instalado lleva 100 * (100 + N) + abi,
- * por eso se compara contra la "versión base" que da el módulo nativo.
+ * El admin publica la versión en el panel (Servicios > Actualizaciones de las apps,
+ * filas ytpremium/android y ytpremium/pc). En ambas se pone 100 + N.
+ * - Android (release build-N): el APK instalado lleva 100 * (100 + N) + abi, por eso se compara
+ *   contra la "versión base" que da el módulo nativo.
+ * - PC (release pc-build-N, versión 1.0.N): la descarga y el instalador están en
+ *   desktop/src/main/lib/app-update.ts; el instalador corre en silencio y vuelve a abrir la app.
  * Si la instalada es menor que la mínima, la actualización es obligatoria (sin "Más tarde").
  */
 
@@ -18,10 +21,21 @@ type State =
   | { kind: 'downloading'; info: AppUpdateInfo; required: boolean; progress: number }
   | { kind: 'needPermission'; info: AppUpdateInfo; required: boolean }
   | { kind: 'ready'; info: AppUpdateInfo; required: boolean }
+  | { kind: 'installing'; info: AppUpdateInfo; required: boolean }
   | { kind: 'failed'; info: AppUpdateInfo; required: boolean; message: string }
 
 const ACCENT = '#7C4DFF'
 const native = NouTubeViewModule as any
+
+/** Versión de escritorio: lo que expone el preload (desktop/src/preload/index.ts). */
+type DesktopUpdate = {
+  info(): { versionCode: number; supported: boolean }
+  download(url: string): Promise<{ size: number }>
+  install(): Promise<void>
+  onProgress(cb: (p: { progress: number }) => void): () => void
+}
+const desktop: DesktopUpdate | undefined =
+  Platform.OS === 'web' ? ((globalThis as any).ytpremium?.appUpdate as DesktopUpdate | undefined) : undefined
 
 /** El enlace fijo YTPremium.apk es arm64; los teléfonos de 32 bits bajan su propia versión. */
 function urlForDevice(url: string, abi: string) {
@@ -42,6 +56,14 @@ export const AppUpdatePrompt = () => {
   }, [state])
 
   const install = (info: AppUpdateInfo, required: boolean) => {
+    if (desktop) {
+      // La app se cierra sola; el instalador la vuelve a abrir al terminar.
+      setState({ kind: 'installing', info, required })
+      desktop
+        .install()
+        .catch((e: any) => setState({ kind: 'failed', info, required, message: String(e?.message ?? e) }))
+      return
+    }
     try {
       native.installAppUpdate()
       setState({ kind: 'ready', info, required })
@@ -53,6 +75,11 @@ export const AppUpdatePrompt = () => {
   const start = async (info: AppUpdateInfo, required: boolean) => {
     setState({ kind: 'downloading', info, required, progress: 0 })
     try {
+      if (desktop) {
+        await desktop.download(info.url)
+        install(info, required)
+        return
+      }
       const abi = (native.getAppUpdateInfo?.()?.abi as string) ?? ''
       await native.downloadAppUpdate(urlForDevice(info.url, abi))
       if (!native.canInstallAppUpdate()) {
@@ -66,15 +93,24 @@ export const AppUpdatePrompt = () => {
   }
 
   useEffect(() => {
-    if (Platform.OS !== 'android' || checkedThisLaunch || typeof native.getAppUpdateInfo !== 'function') return
+    if (checkedThisLaunch) return
+    const android = Platform.OS === 'android' && typeof native.getAppUpdateInfo === 'function'
+    if (!android && !desktop) return
     checkedThisLaunch = true
     ;(async () => {
       try {
-        const local = native.getAppUpdateInfo() as { baseVersion: number }
-        try {
-          native.cleanupAppUpdate?.()
-        } catch {}
-        const info = await fetchAppUpdate('android')
+        let local: { baseVersion: number }
+        if (desktop) {
+          const d = desktop.info()
+          if (!d?.supported) return
+          local = { baseVersion: d.versionCode }
+        } else {
+          local = native.getAppUpdateInfo() as { baseVersion: number }
+          try {
+            native.cleanupAppUpdate?.()
+          } catch {}
+        }
+        const info = await fetchAppUpdate(desktop ? 'pc' : 'android')
         if (!info || !local?.baseVersion) return
         if (info.versionCode > local.baseVersion) {
           setState({ kind: 'available', info, required: local.baseVersion < info.minVersionCode })
@@ -87,10 +123,11 @@ export const AppUpdatePrompt = () => {
 
   // Progreso de la descarga.
   useEffect(() => {
-    if (typeof native.addListener !== 'function') return
-    const sub = native.addListener('appUpdateProgress', (p: { progress: number }) => {
+    const onProgress = (p: { progress: number }) =>
       setState((s) => (s.kind === 'downloading' ? { ...s, progress: p.progress } : s))
-    })
+    if (desktop) return desktop.onProgress(onProgress)
+    if (typeof native.addListener !== 'function') return
+    const sub = native.addListener('appUpdateProgress', onProgress)
     return () => sub?.remove?.()
   }, [])
 
@@ -158,6 +195,16 @@ export const AppUpdatePrompt = () => {
       )
       primary = { label: 'Instalar', onPress: () => install(info, required) }
       break
+    case 'installing':
+      body = (
+        <View>
+          <Text className="text-base text-zinc-300">
+            Instalando… YTPremium se cerrará y volverá a abrirse sola en unos segundos.
+          </Text>
+          <ActivityIndicator style={{ marginTop: 16 }} color="#ffffff" />
+        </View>
+      )
+      break
     case 'failed':
       body = (
         <Text className="text-base text-zinc-300">
@@ -178,7 +225,7 @@ export const AppUpdatePrompt = () => {
           </Text>
           {body}
           <View className="mt-6 flex-row justify-end gap-3">
-            {later && state.kind !== 'downloading' ? (
+            {later && state.kind !== 'downloading' && state.kind !== 'installing' ? (
               <Pressable onPress={later} className="h-11 justify-center rounded-xl px-4 active:opacity-70">
                 <Text className="font-semibold text-zinc-300">Más tarde</Text>
               </Pressable>

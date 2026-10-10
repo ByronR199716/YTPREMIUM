@@ -12,6 +12,7 @@ import { getUserAgent } from '@/lib/useragent'
 import { isSupportedUrl, normalizeSupportedUrl } from '@/lib/supported-url'
 import { uiClient } from './ipc/ui'
 import { initAccessDeviceChannel } from './lib/access-device'
+import { initAppUpdateChannel } from './lib/app-update'
 
 app.userAgentFallback = getUserAgent(process.platform)
 
@@ -180,6 +181,7 @@ app.whenReady().then(() => {
 
   initMainChannel()
   initAccessDeviceChannel()
+  initAppUpdateChannel()
 
   // Default open or close DevTools by F12 in development
   // and ignore CommandOrControl + R in production.
