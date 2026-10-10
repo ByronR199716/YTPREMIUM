@@ -119,7 +119,7 @@ class NouTubeViewModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("NouTubeView")
 
-    Events("log", "sleepTimer", "downloadProgress", "captionStyle", "desktopMode", "pictureInPicture")
+    Events("log", "sleepTimer", "downloadProgress", "captionStyle", "desktopMode", "pictureInPicture", "appUpdateProgress")
 
     OnCreate {
       val manager = captioning() ?: return@OnCreate
@@ -155,6 +155,47 @@ class NouTubeViewModule : Module() {
       val model = android.os.Build.MODEL.orEmpty()
       val name = if (model.startsWith(maker, ignoreCase = true)) model else "$maker $model".trim()
       mapOf("id" to id, "name" to name.take(80))
+    }
+
+    // YTPremium: aviso de nueva versión (ver NouAppUpdate.kt).
+    Function("getAppUpdateInfo") {
+      val ctx = appContext.reactContext?.applicationContext
+      val code = ctx?.let { NouAppUpdate.installedVersionCode(it) } ?: 0L
+      mapOf(
+        "versionCode" to code,
+        "baseVersion" to NouAppUpdate.baseVersion(code),
+        "abi" to NouAppUpdate.primaryAbi(),
+        "canInstall" to (ctx?.let { NouAppUpdate.canInstall(it) } ?: false),
+      )
+    }
+
+    AsyncFunction("downloadAppUpdate") Coroutine { url: String ->
+      val ctx = appContext.reactContext?.applicationContext ?: throw Exception("Application context is unavailable")
+      return@Coroutine kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        NouAppUpdate.download(ctx, url) { progress ->
+          sendEvent("appUpdateProgress", mapOf("progress" to progress))
+        }
+      }
+    }
+
+    Function("canInstallAppUpdate") {
+      val ctx = appContext.reactContext?.applicationContext
+      ctx != null && NouAppUpdate.canInstall(ctx)
+    }
+
+    Function("openInstallPermissionSettings") {
+      val ctx = appContext.reactContext ?: throw Exception("Application context is unavailable")
+      NouAppUpdate.openInstallPermission(ctx)
+    }
+
+    Function("installAppUpdate") {
+      val ctx = appContext.reactContext ?: throw Exception("Application context is unavailable")
+      NouAppUpdate.install(ctx)
+    }
+
+    Function("cleanupAppUpdate") {
+      appContext.reactContext?.applicationContext?.let { NouAppUpdate.cleanup(it) }
+      Unit
     }
 
     Function("isSystemDesktopMode") {

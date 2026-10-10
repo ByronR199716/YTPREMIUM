@@ -54,6 +54,7 @@ jobs:
           jq --argjson vc "$((100 + ${{ github.run_number }}))" --arg v "1.0.${{ github.run_number }}" \
             '.versionCode = $vc | .version = $v' package.json > package.tmp && mv package.tmp package.json
           echo "VERSION=1.0.${{ github.run_number }}" >> "$GITHUB_ENV"
+          echo "PANEL_VERSION=$((100 + ${{ github.run_number }}))" >> "$GITHUB_ENV"
 
       - name: Instalar dependencias y preparar Android
         run: |
@@ -74,13 +75,23 @@ jobs:
         run: |
           BT="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)"
           mkdir -p salida
-          SRC=$(ls android/app/build/outputs/apk/full/release/*.apk | head -n 1)
-          "$BT/zipalign" -f -p 4 "$SRC" salida/alineado.apk
-          "$BT/apksigner" sign --ks "$RUNNER_TEMP/firma.jks" --ks-pass env:KEY_STORE_PASSWORD \
-            --ks-key-alias "$ALIAS" --key-pass env:KEY_PASSWORD \
-            --out "salida/YTPremium-$VERSION.apk" salida/alineado.apk
-          rm salida/alineado.apk
-          "$BT/apksigner" verify salida/*.apk
+          DIR=android/app/build/outputs/apk/full/release
+          ls -la "$DIR"
+          firmar() {
+            "$BT/zipalign" -f -p 4 "$1" salida/alineado.apk
+            "$BT/apksigner" sign --ks "$RUNNER_TEMP/firma.jks" --ks-pass env:KEY_STORE_PASSWORD \
+              --ks-key-alias "$ALIAS" --key-pass env:KEY_PASSWORD \
+              --out "$2" salida/alineado.apk
+            rm salida/alineado.apk
+            "$BT/apksigner" verify "$2"
+          }
+          # arm64-v8a (casi todos los teléfonos): mismo nombre de siempre + copia de nombre fijo
+          # YTPremium.apk, que es el enlace que usa el aviso de actualización dentro de la app.
+          firmar "$(ls $DIR/*arm64-v8a*.apk | head -n 1)" "salida/YTPremium-$VERSION.apk"
+          cp "salida/YTPremium-$VERSION.apk" salida/YTPremium.apk
+          # armeabi-v7a (teléfonos viejos de 32 bits): la app cambia el enlace sola si hace falta.
+          V7=$(ls $DIR/*armeabi-v7a*.apk 2>/dev/null | head -n 1 || true)
+          if [ -n "$V7" ]; then firmar "$V7" salida/YTPremium-armeabi-v7a.apk; fi
           ls -la salida
 
       - name: Guardar APK en esta ejecución
@@ -94,5 +105,8 @@ jobs:
         with:
           tag_name: build-${{ github.run_number }}
           name: YTPremium ${{ env.VERSION }}
-          body: "APK compilado automáticamente."
+          make_latest: true
+          body: |
+            APK compilado automáticamente (versión para el panel: ${{ env.PANEL_VERSION }}).
+            Enlace fijo: https://github.com/${{ github.repository }}/releases/latest/download/YTPremium.apk
           files: salida/*.apk

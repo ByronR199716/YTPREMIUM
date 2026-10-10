@@ -5,6 +5,8 @@
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
   <uses-permission android:name="android.permission.BLUETOOTH"/>
   <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+  <!-- YTPremium: instalar la actualización descargada desde el panel -->
+  <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
   <application>
     <service
@@ -23,5 +25,15 @@
         <action android:name="android.intent.action.MEDIA_BUTTON" />
       </intent-filter>
     </receiver>
+
+    <provider
+      android:name=".NouUpdateFileProvider"
+      android:authorities="${applicationId}.ytupdate"
+      android:exported="false"
+      android:grantUriPermissions="true">
+      <meta-data
+        android:name="android.support.FILE_PROVIDER_PATHS"
+        android:resource="@xml/ytpremium_update_paths" />
+    </provider>
   </application>
 </manifest>

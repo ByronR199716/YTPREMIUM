@@ -48,6 +48,13 @@ declare class NouTubeViewModule extends NativeModule {
   isSystemDesktopMode(): boolean
   /* YTPremium: identificador estable y nombre del dispositivo (solo Android). */
   getAccessDevice(): { id: string; name: string }
+  /* YTPremium: aviso de nueva versión (solo Android). */
+  getAppUpdateInfo(): { versionCode: number; baseVersion: number; abi: string; canInstall: boolean }
+  downloadAppUpdate(url: string): Promise<{ versionCode: number; size: number }>
+  canInstallAppUpdate(): boolean
+  openInstallPermissionSettings(): void
+  installAppUpdate(): void
+  cleanupAppUpdate(): void
   translateText(text: string, targetLanguage: string): Promise<{ text: string; sourceLanguage?: string }>
   getTranslationSupportedLanguages(): string[]
 }

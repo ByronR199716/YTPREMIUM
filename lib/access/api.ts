@@ -64,3 +64,28 @@ export async function validateCode(code: string, deviceId: string, deviceName: s
     graceHours: num(o?.offline_grace_hours) ?? 72,
   }
 }
+
+/** Versión publicada en el panel (Servicios > Actualizaciones de las apps). */
+export interface AppUpdateInfo {
+  versionCode: number
+  minVersionCode: number
+  url: string
+  notes: string
+}
+
+/** null = no hay versión publicada (o el servicio está apagado en el panel). */
+export async function fetchAppUpdate(platform = 'android'): Promise<AppUpdateInfo | null> {
+  const o = (await rpc('get_app_update', { p_service: AccessConfig.SERVICE, p_platform: platform })) as Record<
+    string,
+    unknown
+  > | null
+  const versionCode = num(o?.version_code) ?? 0
+  const url = typeof o?.url === 'string' ? o.url : ''
+  if (versionCode <= 0 || !url) return null
+  return {
+    versionCode,
+    minVersionCode: num(o?.min_version_code) ?? 0,
+    url,
+    notes: typeof o?.notes === 'string' ? o.notes : '',
+  }
+}

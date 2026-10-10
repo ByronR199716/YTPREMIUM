@@ -4,6 +4,7 @@ import { useValue } from '@legendapp/state/react'
 import Svg, { Circle, Path, Rect } from 'react-native-svg'
 import { access$, checkAccess, formatCode, submitCode } from '@/lib/access/controller'
 import { AccessConfig } from '@/lib/access/config'
+import { AppUpdatePrompt } from './AppUpdatePrompt'
 
 const REDEEM_COLOR = '#7C4DFF'
 const LOGO_RED = '#d91e2e'
@@ -41,7 +42,12 @@ export const AccessGate: React.FC<React.PropsWithChildren> = ({ children }) => {
   }, [])
 
   if (status === 'unlocked') {
-    return <>{children}</>
+    return (
+      <>
+        {children}
+        <AppUpdatePrompt />
+      </>
+    )
   }
   if (status === 'checking') {
     return (
