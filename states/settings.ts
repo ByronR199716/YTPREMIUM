@@ -2,8 +2,24 @@ import { observable } from '@legendapp/state'
 import { syncObservable } from '@legendapp/state/sync'
 import { ObservablePersistMMKV } from '@legendapp/state/persist-plugins/mmkv'
 import { isWeb } from '@/lib/utils'
+
 import { normalizeI18nLanguage, type SupportedI18nLanguage } from '@/lib/i18n'
 import type { DownloadPreset } from '@/lib/download-format'
+
+/*
+ * YTPremium: valores con los que se instala la app en el celular (elegidos por el dueño, 2026-10-11).
+ * Solo cuentan en una instalación nueva o si el cliente nunca tocó esa opción.
+ * En la PC (isWeb) se dejan los de NouTube.
+ */
+const MOBILE = !isWeb
+const DEFAULT_HEADER_POSITION: 'top' | 'bottom' = MOBILE ? 'bottom' : 'top'
+const DEFAULT_AUTO_HIDE_HEADER = MOBILE
+const DEFAULT_TOOLBAR_LIBRARY_STAR = !MOBILE
+const DEFAULT_FEEDS_ENABLED = !MOBILE
+const DEFAULT_HIDE_SHORTS = !MOBILE
+const DEFAULT_MINI_PLAYER = MOBILE
+const DEFAULT_PICTURE_IN_PICTURE = MOBILE
+const DEFAULT_SHOW_DISLIKES = MOBILE
 
 export interface SettingsSnapshot {
   language: SupportedI18nLanguage | null
@@ -98,8 +114,8 @@ export const normalizeSettings = <T extends Partial<SettingsSnapshot> | undefine
     return data
   }
   data.language = normalizeI18nLanguage(data.language)
-  if (data.headerPosition !== 'bottom') {
-    data.headerPosition = 'top'
+  if (data.headerPosition !== 'top' && data.headerPosition !== 'bottom') {
+    data.headerPosition = DEFAULT_HEADER_POSITION
   }
   if (typeof data.showHomeButtonInHeader !== 'boolean') {
     data.showHomeButtonInHeader = false
@@ -126,10 +142,10 @@ export const normalizeSettings = <T extends Partial<SettingsSnapshot> | undefine
     data.showSleepTimerButtonInHeader = false
   }
   if (typeof data.showLibraryButtonInHeader !== 'boolean') {
-    data.showLibraryButtonInHeader = true
+    data.showLibraryButtonInHeader = DEFAULT_TOOLBAR_LIBRARY_STAR
   }
   if (typeof data.showStarButtonInHeader !== 'boolean') {
-    data.showStarButtonInHeader = true
+    data.showStarButtonInHeader = DEFAULT_TOOLBAR_LIBRARY_STAR
   }
   if (typeof data.showMediaNotificationPrevButton !== 'boolean') {
     data.showMediaNotificationPrevButton = true
@@ -153,7 +169,7 @@ export const normalizeSettings = <T extends Partial<SettingsSnapshot> | undefine
     data.blockAds = true
   }
   if (typeof data.showDislikes !== 'boolean') {
-    data.showDislikes = false
+    data.showDislikes = DEFAULT_SHOW_DISLIKES
   }
   if (typeof data.showOriginalVideoTitle !== 'boolean') {
     data.showOriginalVideoTitle = false
@@ -180,14 +196,14 @@ export const normalizeSettings = <T extends Partial<SettingsSnapshot> | undefine
     data.replaceWatchNavigation = false
   }
   if (typeof data.miniPlayer !== 'boolean') {
-    data.miniPlayer = false
+    data.miniPlayer = DEFAULT_MINI_PLAYER
   }
   // PlayerFrame reads this one straight out of the store and does arithmetic
   // on it, so anything unexpected has to be replaced, not defaulted.
   data.miniPlayerPosition = getMiniPlayerPosition(data)
   delete (data as { miniPlayerCorner?: unknown }).miniPlayerCorner
   if (typeof data.pictureInPicture !== 'boolean') {
-    data.pictureInPicture = false
+    data.pictureInPicture = DEFAULT_PICTURE_IN_PICTURE
   }
   if (typeof data.proxyEnabled !== 'boolean') {
     data.proxyEnabled = false
@@ -211,7 +227,7 @@ export const getSettingsSnapshot = (value: Partial<Store> | undefined = settings
   language: normalizeI18nLanguage(value?.language),
   home: value?.home === 'yt-music' ? 'yt-music' : 'yt',
 
-  autoHideHeader: Boolean(value?.autoHideHeader),
+  autoHideHeader: typeof value?.autoHideHeader === 'boolean' ? value.autoHideHeader : DEFAULT_AUTO_HIDE_HEADER,
   autoHideSidebar: Boolean(value?.autoHideSidebar),
   doubleTapToToggleHeader: Boolean(value?.doubleTapToToggleHeader),
   translateComments: Boolean(value?.translateComments),
@@ -220,17 +236,20 @@ export const getSettingsSnapshot = (value: Partial<Store> | undefined = settings
       ? value.translationTargetLanguage
       : null,
   hideToolbarWhenScrolled: Boolean(value?.hideToolbarWhenScrolled),
-  headerPosition: value?.headerPosition === 'bottom' ? 'bottom' : 'top',
-  feedsEnabled: typeof value?.feedsEnabled === 'boolean' ? value.feedsEnabled : true,
+  headerPosition:
+    value?.headerPosition === 'bottom' || value?.headerPosition === 'top'
+      ? value.headerPosition
+      : DEFAULT_HEADER_POSITION,
+  feedsEnabled: typeof value?.feedsEnabled === 'boolean' ? value.feedsEnabled : DEFAULT_FEEDS_ENABLED,
   feedNotificationsEnabled: Boolean(value?.feedNotificationsEnabled),
-  hideShorts: typeof value?.hideShorts === 'boolean' ? value.hideShorts : true,
+  hideShorts: typeof value?.hideShorts === 'boolean' ? value.hideShorts : DEFAULT_HIDE_SHORTS,
   hideShortsInNavbar: Boolean(value?.hideShortsInNavbar),
   hideMixPlaylist: Boolean(value?.hideMixPlaylist),
   keepHistory: typeof value?.keepHistory === 'boolean' ? value.keepHistory : true,
   replaceWatchNavigation: Boolean(value?.replaceWatchNavigation),
-  miniPlayer: typeof value?.miniPlayer === 'boolean' ? value.miniPlayer : false,
+  miniPlayer: typeof value?.miniPlayer === 'boolean' ? value.miniPlayer : DEFAULT_MINI_PLAYER,
   miniPlayerPosition: getMiniPlayerPosition(value),
-  pictureInPicture: Boolean(value?.pictureInPicture),
+  pictureInPicture: typeof value?.pictureInPicture === 'boolean' ? value.pictureInPicture : DEFAULT_PICTURE_IN_PICTURE,
   preferH264: Boolean(value?.preferH264),
   clickbaitThumbnail: ['hq1', 'hq2', 'hq3'].includes(value?.clickbaitThumbnail || '')
     ? (value?.clickbaitThumbnail as SettingsSnapshot['clickbaitThumbnail'])
@@ -241,7 +260,7 @@ export const getSettingsSnapshot = (value: Partial<Store> | undefined = settings
   pullToRefreshEnabled: typeof value?.pullToRefreshEnabled === 'boolean' ? value.pullToRefreshEnabled : true,
   sponsorBlock: typeof value?.sponsorBlock === 'boolean' ? value.sponsorBlock : true,
   blockAds: typeof value?.blockAds === 'boolean' ? value.blockAds : true,
-  showDislikes: Boolean(value?.showDislikes),
+  showDislikes: typeof value?.showDislikes === 'boolean' ? value.showDislikes : DEFAULT_SHOW_DISLIKES,
   showOriginalVideoTitle: Boolean(value?.showOriginalVideoTitle),
   useSystemCaptionStyle: Boolean(value?.useSystemCaptionStyle),
   showBackButtonInHeader: Boolean(value?.showBackButtonInHeader),
@@ -253,8 +272,11 @@ export const getSettingsSnapshot = (value: Partial<Store> | undefined = settings
   showPlaybackQualityControl: Boolean(value?.showPlaybackQualityControl),
   showSleepTimerButtonInHeader: Boolean(value?.showSleepTimerButtonInHeader),
   showLibraryButtonInHeader:
-    typeof value?.showLibraryButtonInHeader === 'boolean' ? value.showLibraryButtonInHeader : true,
-  showStarButtonInHeader: typeof value?.showStarButtonInHeader === 'boolean' ? value.showStarButtonInHeader : true,
+    typeof value?.showLibraryButtonInHeader === 'boolean'
+      ? value.showLibraryButtonInHeader
+      : DEFAULT_TOOLBAR_LIBRARY_STAR,
+  showStarButtonInHeader:
+    typeof value?.showStarButtonInHeader === 'boolean' ? value.showStarButtonInHeader : DEFAULT_TOOLBAR_LIBRARY_STAR,
   showMediaNotificationPrevButton:
     typeof value?.showMediaNotificationPrevButton === 'boolean' ? value.showMediaNotificationPrevButton : true,
   showMediaNotificationNextButton:
@@ -285,23 +307,23 @@ export const settings$ = observable<Store>({
   home: 'yt',
   isYTMusic: (): boolean => settings$.home.get() === 'yt-music',
 
-  autoHideHeader: false,
+  autoHideHeader: DEFAULT_AUTO_HIDE_HEADER,
   autoHideSidebar: false,
   doubleTapToToggleHeader: false,
   translateComments: false,
   translationTargetLanguage: null,
   hideToolbarWhenScrolled: false,
-  headerPosition: 'top',
-  feedsEnabled: true,
+  headerPosition: DEFAULT_HEADER_POSITION,
+  feedsEnabled: DEFAULT_FEEDS_ENABLED,
   feedNotificationsEnabled: false,
-  hideShorts: true,
+  hideShorts: DEFAULT_HIDE_SHORTS,
   hideShortsInNavbar: false,
   hideMixPlaylist: false,
   keepHistory: true,
   replaceWatchNavigation: false,
-  miniPlayer: false,
+  miniPlayer: DEFAULT_MINI_PLAYER,
   miniPlayerPosition: { x: 1, y: 1 },
-  pictureInPicture: false,
+  pictureInPicture: DEFAULT_PICTURE_IN_PICTURE,
   preferH264: false,
   clickbaitThumbnail: 'default',
   playbackRate: 1,
@@ -310,7 +332,7 @@ export const settings$ = observable<Store>({
   pullToRefreshEnabled: true,
   sponsorBlock: true,
   blockAds: true,
-  showDislikes: false,
+  showDislikes: DEFAULT_SHOW_DISLIKES,
   showOriginalVideoTitle: false,
   useSystemCaptionStyle: false,
   showBackButtonInHeader: false,
@@ -321,8 +343,8 @@ export const settings$ = observable<Store>({
   showPlaybackSpeedControl: false,
   showPlaybackQualityControl: false,
   showSleepTimerButtonInHeader: false,
-  showLibraryButtonInHeader: true,
-  showStarButtonInHeader: true,
+  showLibraryButtonInHeader: DEFAULT_TOOLBAR_LIBRARY_STAR,
+  showStarButtonInHeader: DEFAULT_TOOLBAR_LIBRARY_STAR,
   showMediaNotificationPrevButton: true,
   showMediaNotificationNextButton: true,
   showMediaNotificationRewindButton: true,

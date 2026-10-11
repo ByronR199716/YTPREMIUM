@@ -8,8 +8,9 @@ describe('settings', () => {
     expect(getSettingsSnapshot({}).showOriginalVideoTitle).toBe(false)
   })
 
-  it('defaults show dislikes setting off in snapshots', () => {
-    expect(getSettingsSnapshot({}).showDislikes).toBe(false)
+  // YTPremium: en el celular "Mostrar No me gusta" viene activado.
+  it('defaults show dislikes setting on in snapshots', () => {
+    expect(getSettingsSnapshot({}).showDislikes).toBe(true)
   })
 
   it('defaults desktop sidebar autohide setting off in snapshots', () => {
@@ -34,9 +35,9 @@ describe('settings', () => {
     expect(settings?.showOriginalVideoTitle).toBe(false)
   })
 
-  it('normalizes missing show dislikes setting to false', () => {
+  it('normalizes missing show dislikes setting to true', () => {
     const settings = normalizePartialSettings()
-    expect(settings?.showDislikes).toBe(false)
+    expect(settings?.showDislikes).toBe(true)
   })
 
   it('normalizes missing desktop sidebar autohide setting to false', () => {
@@ -72,5 +73,29 @@ describe('settings', () => {
   it('clamps an out-of-range mini player position', () => {
     const settings = normalizeSettings<Partial<SettingsSnapshot>>({ miniPlayerPosition: { x: 2, y: -1 } })
     expect(settings?.miniPlayerPosition).toEqual({ x: 1, y: 0 })
+  })
+})
+
+describe('YTPremium mobile defaults', () => {
+  it('uses the owner-chosen defaults for a fresh install', () => {
+    const s = getSettingsSnapshot({})
+    expect(s.headerPosition).toBe('bottom')
+    expect(s.autoHideHeader).toBe(true)
+    expect(s.showLibraryButtonInHeader).toBe(false)
+    expect(s.showStarButtonInHeader).toBe(false)
+    expect(s.feedsEnabled).toBe(false)
+    expect(s.hideShorts).toBe(false)
+    expect(s.miniPlayer).toBe(true)
+    expect(s.pictureInPicture).toBe(true)
+    expect(s.showDislikes).toBe(true)
+    expect(s.sponsorBlock).toBe(true)
+    expect(s.blockAds).toBe(true)
+  })
+
+  it('keeps a value the user already chose', () => {
+    const s = getSettingsSnapshot({ headerPosition: 'top', miniPlayer: false, hideShorts: true })
+    expect(s.headerPosition).toBe('top')
+    expect(s.miniPlayer).toBe(false)
+    expect(s.hideShorts).toBe(true)
   })
 })
