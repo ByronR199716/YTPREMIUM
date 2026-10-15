@@ -5,9 +5,11 @@ import {
 } from './css'
 import { playDefaultAudio, restoreLastPlaying } from './player'
 import { getPlayerFormats } from './player-formats'
+import { navigateWatch } from './split-view'
 import { emit, isYTMusic } from './utils'
 import { createDefaultUserStylesSnapshot, type UserStylesSnapshot } from '../lib/user-styles'
 import { createDefaultBlocklistSnapshot, type BlocklistSnapshot } from '../lib/blocklist'
+import { getPlaylistNeighborUrl, type PlaylistDirection } from '../lib/playlist-nav'
 
 export const noutubeSettingsEvent = 'noutube:settings'
 export const noutubeUserStylesEvent = 'noutube:user-styles'
@@ -78,7 +80,22 @@ function setBlocklist(next?: BlocklistSnapshot) {
   return blocklist
 }
 
+// m.youtube.com keeps the playlist in the page rather than in the player, so
+// the player's own next and previous would leave the playlist.
+function skipInPlaylist(direction: PlaylistDirection) {
+  if (isYTMusic) return false
+  const player = getPlayer()
+  // The playlist panel only exists while it is expanded, so read what the
+  // page handed to the player instead.
+  const playlist = player?.getWatchNextResponse?.()?.contents?.singleColumnWatchNextResults?.playlist?.playlist
+  const url = getPlaylistNeighborUrl(playlist, direction, player?.getVideoData?.()?.video_id)
+  if (!url) return false
+  navigateWatch(url)
+  return true
+}
+
 function skipToPrevious() {
+  if (skipInPlaylist('previous')) return
   const player = getPlayer()
   // YouTube restarts the current video instead of going back once it has
   // played a few seconds; rewinding first makes one press go back.
@@ -87,10 +104,11 @@ function skipToPrevious() {
 }
 
 // The skip itself, once the app has ruled out its own queue (NouTube.next()
-// asks the app first). nextVideo() only walks the player's own playlist:
+// asks the app first, unless the queue is known to be empty).
 // - YouTube Music keeps the real "Up next" queue (shuffle included) in its own
 //   UI, so the player's playlist can be empty or stale. Pressing its own next
 //   button is what the user would do, and works in the background too.
+// - m.youtube.com playlists live in the page, not the player: skipInPlaylist.
 // - A lone m.youtube.com video has no playlist at all; the next song is the
 //   one autoplay starts at the end, so jump to the end.
 function skipToNext() {
@@ -103,11 +121,14 @@ function skipToNext() {
       button.click()
       return
     }
-  } else if (!new URL(document.location.href).searchParams.has('list')) {
-    const duration = player?.getDuration?.()
-    if (duration > 0 && !player?.getVideoData?.()?.isLive) {
-      player.seekTo(duration, true)
-      return
+  } else {
+    if (skipInPlaylist('next')) return
+    if (!new URL(document.location.href).searchParams.has('list')) {
+      const duration = player?.getDuration?.()
+      if (duration > 0 && !player?.getVideoData?.()?.isLive) {
+        player.seekTo(duration, true)
+        return
+      }
     }
   }
   player?.nextVideo()
@@ -175,6 +196,7 @@ export function initNouTube() {
         skipToNext()
       }
     },
+    // What next falls back to once the app found nothing left in the queue.
     skipToNext,
     seekBy: (delta: number) => getPlayer()?.seekBy(delta),
     seekTo: (seconds: number) => getPlayer()?.seekTo(seconds),
