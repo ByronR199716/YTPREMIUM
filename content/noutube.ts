@@ -86,6 +86,33 @@ function skipToPrevious() {
   player?.previousVideo()
 }
 
+// The skip itself, once the app has ruled out its own queue (NouTube.next()
+// asks the app first). nextVideo() only walks the player's own playlist:
+// - YouTube Music keeps the real "Up next" queue (shuffle included) in its own
+//   UI, so the player's playlist can be empty or stale. Pressing its own next
+//   button is what the user would do, and works in the background too.
+// - A lone m.youtube.com video has no playlist at all; the next song is the
+//   one autoplay starts at the end, so jump to the end.
+function skipToNext() {
+  const player = getPlayer()
+  if (isYTMusic) {
+    const button = document.querySelector<HTMLElement>(
+      'ytmusic-player-bar .next-button, ytmusic-player-controls .next-button, ytmusic-player-page .next-button',
+    )
+    if (button) {
+      button.click()
+      return
+    }
+  } else if (!new URL(document.location.href).searchParams.has('list')) {
+    const duration = player?.getDuration?.()
+    if (duration > 0 && !player?.getVideoData?.()?.isLive) {
+      player.seekTo(duration, true)
+      return
+    }
+  }
+  player?.nextVideo()
+}
+
 // YouTube Music's own previous buttons follow the same restart rule.
 function handlePreviousButtons() {
   document.addEventListener(
@@ -139,9 +166,10 @@ export function initNouTube() {
         const videoUrl = getPlayer()?.getVideoUrl?.() || ''
         emit('playback-next', { url: videoUrl.includes('v=') ? videoUrl : document.location.href })
       } else {
-        getPlayer()?.nextVideo()
+        skipToNext()
       }
     },
+    skipToNext,
     seekBy: (delta: number) => getPlayer()?.seekBy(delta),
     seekTo: (seconds: number) => getPlayer()?.seekTo(seconds),
     getVideoUrl: () => getPlayer()?.getVideoUrl?.() || '',

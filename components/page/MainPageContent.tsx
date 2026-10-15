@@ -731,15 +731,10 @@ export const MainPageContent: React.FC<{ contentJs: string }> = ({ contentJs }) 
             } else if (manualNext) {
               // Call the player directly: NouTube.next() would bridge back here.
               const ref = source === 'player' ? playerRef.current : nativeRef.current
-              // A lone m.youtube.com video has no playlist for nextVideo() to
-              // advance, so it does nothing; the next song there is the one
-              // autoplay picks when the video ends. Jump to the end instead,
-              // which lets autoplay start it, exactly like a natural ending.
-              const isMusic = endedUrl.includes('music.youtube.com')
+              // skipToNext() handles what nextVideo() alone cannot: YouTube
+              // Music's own queue (shuffle) and lone videos (see noutube.ts).
               ref?.executeJavaScript(
-                hasPlaylistParam || isMusic
-                  ? 'document.getElementById("movie_player")?.nextVideo()'
-                  : '(()=>{const p=document.getElementById("movie_player");const d=p?.getDuration?.();if(d>0&&!p.getVideoData?.()?.isLive){p.seekTo(d,true)}else{p?.nextVideo()}})()',
+                'window.NouTube?.skipToNext ? NouTube.skipToNext() : document.getElementById("movie_player")?.nextVideo()',
               )
             }
           }

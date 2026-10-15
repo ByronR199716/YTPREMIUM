@@ -2,11 +2,11 @@
 // bars) and "fill" (no bars, edges cropped), like the official YouTube app.
 // Spreading two fingers fills the screen, pinching them together goes back.
 //
-// The fill is a scale transform on the <video> element rather than object-fit:
-// the mobile player sizes and positions the element itself, and depending on
-// the build it either sizes it to the picture or to the screen with the picture
-// contained. Scaling by cover/contain ratio around the screen centre gives the
-// same result in both cases and leaves YouTube's own layout untouched.
+// Nothing about YouTube's layout is assumed: the visible picture is measured on
+// screen (the <video> box, its object-fit and the stream's own aspect), and the
+// video's container is scaled and shifted so that picture covers the
+// fullscreen element, centred. The result is measured again and corrected, so
+// sizes or transforms YouTube puts on the player do not throw it off.
 
 const fillKey = 'nou:fsFill'
 const toastId = '_nou_fill_toast'
@@ -43,41 +43,83 @@ function saveFill(fill: boolean) {
   } catch {}
 }
 
-function fillScale(host: HTMLElement, video: HTMLVideoElement) {
-  const { videoWidth, videoHeight } = video
-  const rect = host.getBoundingClientRect()
-  if (!videoWidth || !videoHeight || !rect.width || !rect.height) {
-    return 1
+type Box = { x: number; y: number; w: number; h: number }
+
+// The part of the <video> box the picture actually occupies.
+function pictureBox(video: HTMLVideoElement): Box | null {
+  const r = video.getBoundingClientRect()
+  const { videoWidth: iw, videoHeight: ih } = video
+  if (!iw || !ih || !r.width || !r.height) {
+    return null
   }
-  const sx = rect.width / videoWidth
-  const sy = rect.height / videoHeight
-  const scale = Math.max(sx, sy) / Math.min(sx, sy)
-  // A picture that already matches the screen needs nothing; cap the zoom so a
-  // vertical video in landscape is not blown up into a few pixels.
-  return scale < 1.01 ? 1 : Math.min(scale, 3)
+  const fit = getComputedStyle(video).objectFit
+  if (fit === 'fill' || fit === 'cover') {
+    return { x: r.left, y: r.top, w: r.width, h: r.height }
+  }
+  const k = Math.min(r.width / iw, r.height / ih)
+  const w = iw * k
+  const h = ih * k
+  return { x: r.left + (r.width - w) / 2, y: r.top + (r.height - h) / 2, w, h }
+}
+
+const getTarget = (video: HTMLVideoElement) =>
+  (video.parentElement?.classList.contains('html5-video-container') ? video.parentElement : video) as HTMLElement
+
+function clearFill() {
+  document.querySelectorAll<HTMLElement>('[data-nou-fill]').forEach((el) => {
+    el.style.removeProperty('transform')
+    el.style.removeProperty('transform-origin')
+    delete el.dataset.nouFill
+  })
 }
 
 function applyFill() {
   const host = getFullscreenElement()
   const video = host && getVideo(host)
-  if (!host || !video) {
+  clearFill()
+  if (!host || !video || !isFillSaved()) {
     return
   }
-  const scale = isFillSaved() ? fillScale(host, video) : 1
-  if (scale > 1) {
-    video.style.setProperty('transform', `scale(${scale.toFixed(4)})`, 'important')
-    video.style.setProperty('transform-origin', 'center center', 'important')
-    video.dataset.nouFill = '1'
-  } else {
-    clearFill(video)
-  }
-}
-
-function clearFill(video: HTMLVideoElement | null) {
-  if (video?.dataset.nouFill) {
-    video.style.removeProperty('transform')
-    video.style.removeProperty('transform-origin')
-    delete video.dataset.nouFill
+  const screen = host.getBoundingClientRect()
+  const target = getTarget(video)
+  let scale = 1
+  let tx = 0
+  let ty = 0
+  // Two passes: the first from the untouched layout, the second corrects for
+  // anything the first could not see (transforms on the player, rounding).
+  for (let pass = 0; pass < 2; pass++) {
+    const pic = pictureBox(video)
+    if (!pic || !screen.width || !screen.height) {
+      break
+    }
+    const k = Math.max(screen.width / pic.w, screen.height / pic.h)
+    const cx = screen.left + screen.width / 2 - (pic.x + pic.w / 2)
+    const cy = screen.top + screen.height / 2 - (pic.y + pic.h / 2)
+    if (pass === 1 && Math.abs(k - 1) < 0.005 && Math.abs(cx) < 1 && Math.abs(cy) < 1) {
+      break
+    }
+    // Scale around the picture's centre, then move that centre to the screen's.
+    // In the target's own (pre-transform) coordinates, with origin at its
+    // top-left corner and the current transform already applied.
+    const box = target.getBoundingClientRect()
+    const ox = (pic.x + pic.w / 2 - box.left) / (box.width / target.offsetWidth || 1)
+    const oy = (pic.y + pic.h / 2 - box.top) / (box.height / target.offsetHeight || 1)
+    const ps = scale
+    scale = ps * k
+    tx = tx + (ox * ps) * (1 - k) + cx
+    ty = ty + (oy * ps) * (1 - k) + cy
+    if (scale < 1.01 && pass === 0) {
+      // The picture already fills the screen.
+      return
+    }
+    scale = Math.min(scale, 3)
+    target.style.setProperty('transform-origin', '0 0', 'important')
+    target.style.setProperty(
+      'transform',
+      `translate(${tx.toFixed(2)}px, ${ty.toFixed(2)}px) scale(${scale.toFixed(4)})`,
+      'important',
+    )
+    target.dataset.nouFill = '1'
   }
 }
 
@@ -184,7 +226,7 @@ export function installPinchToFill() {
     if (getFullscreenElement()) {
       applyFill()
     } else {
-      clearFill(document.querySelector<HTMLVideoElement>('video[data-nou-fill]'))
+      clearFill()
       document.getElementById(toastId)?.remove()
     }
   }
