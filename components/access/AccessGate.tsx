@@ -5,6 +5,7 @@ import Svg, { Circle, Path, Rect } from 'react-native-svg'
 import { access$, checkAccess, formatCode, submitCode } from '@/lib/access/controller'
 import { AccessConfig } from '@/lib/access/config'
 import { AppUpdatePrompt } from './AppUpdatePrompt'
+import { PostUpdateNotice } from './PostUpdateNotice'
 
 const REDEEM_COLOR = '#7C4DFF'
 const LOGO_RED = '#d91e2e'
@@ -46,6 +47,7 @@ export const AccessGate: React.FC<React.PropsWithChildren> = ({ children }) => {
       <>
         {children}
         <AppUpdatePrompt />
+        <PostUpdateNotice />
       </>
     )
   }
