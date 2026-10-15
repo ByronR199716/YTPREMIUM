@@ -542,7 +542,10 @@ export const MainPageContent: React.FC<{ contentJs: string }> = ({ contentJs }) 
 
   const syncSettingsToWebview = useCallback(() => {
     const settings = getContentSettingsSnapshot()
-    const value = JSON.stringify(settings)
+    // queueSize lets the page skip on its own when the app's queue is empty
+    // (see NouTube.next in content/noutube.ts): asking the app first does not
+    // work in the background, where its events only arrive once it is opened.
+    const value = JSON.stringify({ ...settings, queueSize: queue$.bookmarks.get().length })
     for (const ref of nativeViews()) {
       ref.executeJavaScript(
         `localStorage.setItem('nou:settings', '${value}'); window.NouTube?.setSettings?.(${value})`,
@@ -950,6 +953,7 @@ export const MainPageContent: React.FC<{ contentJs: string }> = ({ contentJs }) 
   useObserveEffect(settings$.translateComments, () => syncSettingsToWebview())
   useObserveEffect(settings$.translationTargetLanguage, () => syncSettingsToWebview())
   useObserveEffect(settings$.useSystemCaptionStyle, () => syncSettingsToWebview())
+  useObserveEffect(queue$.bookmarks, () => syncSettingsToWebview())
 
   // Track whether Android runs us on a desktop-class screen. The manual
   // desktop-site override only lasts for one such session, so drop it whenever

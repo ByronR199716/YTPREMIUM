@@ -160,7 +160,13 @@ export function initNouTube() {
     pause: () => getPlayer()?.pauseVideo(),
     prev: skipToPrevious,
     next: () => {
-      if (window.NouTubeI) {
+      // The app only needs to be asked when its own queue has something in
+      // it. Asking goes through the app's event loop, which does not run while
+      // the app is in the background: every skip then waited until the app
+      // was opened again. With an empty queue (the usual case) skip right here,
+      // the same way prev does.
+      const queueSize = (getSettings() as { queueSize?: number }).queueSize
+      if (window.NouTubeI && queueSize !== 0) {
         // The page url stops naming the playing video once the user browses
         // away with the mini player, so prefer the player's own.
         const videoUrl = getPlayer()?.getVideoUrl?.() || ''
