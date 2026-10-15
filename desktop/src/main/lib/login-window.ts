@@ -101,5 +101,6 @@ export async function openLoginWindow(url = DEFAULT_SIGN_IN_URL) {
     reloadYouTubeTabs()
   })
 
-  await win.loadURL(url, { userAgent: SIGN_IN_USER_AGENT })
+  // Google's redirects abort the first load (ERR_ABORTED); that is expected.
+  await win.loadURL(url, { userAgent: SIGN_IN_USER_AGENT }).catch(() => {})
 }

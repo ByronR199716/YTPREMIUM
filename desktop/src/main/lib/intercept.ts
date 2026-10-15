@@ -254,24 +254,54 @@ function isSignInUrl(url: string) {
   }
 }
 
+let pendingSignIn = false
+
+// Never stop or start navigations from inside a navigation event: Chromium
+// crashes the whole app if a navigation is cancelled while it is still being
+// set up (the app closed as soon as "Acceder" was clicked in pc-build-7).
+// Only the cancellable events call preventDefault; everything else is
+// deferred to the next turn of the event loop.
+function openSignInLater(url: string) {
+  if (pendingSignIn) return
+  pendingSignIn = true
+  setTimeout(() => {
+    pendingSignIn = false
+    void import('./login-window')
+      .then(({ openLoginWindow }) => openLoginWindow(url))
+      .catch((e) => console.error('Sign-in window failed:', e))
+  }, 0)
+}
+
+function navigationDetails(event: any, legacyUrl?: string, legacyMainFrame?: boolean) {
+  const url: string | undefined = event?.url ?? legacyUrl
+  const isMainFrame: boolean | undefined = event?.isMainFrame ?? legacyMainFrame
+  return { url, isMainFrame }
+}
+
 function watchWebview(contents: WebContents) {
-  const onNavigation = (event: any, legacyUrl?: string, _inPlace?: boolean, legacyMainFrame?: boolean) => {
-    const url: string | undefined = event?.url ?? legacyUrl
-    const isMainFrame: boolean | undefined = event?.isMainFrame ?? legacyMainFrame
+  // Cancellable: the tab stays where it was and the sign-in window opens.
+  const onCancellable = (event: any, legacyUrl?: string, _inPlace?: boolean, legacyMainFrame?: boolean) => {
+    const { url, isMainFrame } = navigationDetails(event, legacyUrl, legacyMainFrame)
     if (!url || isMainFrame === false || !isSignInUrl(url)) return
     event?.preventDefault?.()
-    void import('./login-window').then(({ openLoginWindow }) => openLoginWindow(url))
+    openSignInLater(url)
   }
-  contents.on('will-navigate', onNavigation)
-  contents.on('will-redirect', onNavigation)
-  contents.on('did-start-navigation', (event: any, legacyUrl?: string, _inPlace?: boolean, legacyMainFrame?: boolean) => {
-    // Navigations will-navigate does not see (typed URL, loadURL): stop them
-    // here and send them to the sign-in window too.
-    const url: string | undefined = event?.url ?? legacyUrl
-    const isMainFrame: boolean | undefined = event?.isMainFrame ?? legacyMainFrame
-    if (!url || isMainFrame === false || !isSignInUrl(url)) return
-    contents.stop()
-    void import('./login-window').then(({ openLoginWindow }) => openLoginWindow(url))
+  contents.on('will-navigate', onCancellable)
+  contents.on('will-redirect', onCancellable)
+
+  // Anything that still ends up on Google inside a tab (typed URL, loadURL):
+  // once it has committed, go back and open the sign-in window instead.
+  contents.on('did-navigate', (_event, url) => {
+    if (!isSignInUrl(url)) return
+    setTimeout(() => {
+      if (contents.isDestroyed()) return
+      if (contents.navigationHistory?.canGoBack?.()) {
+        contents.navigationHistory.goBack()
+      } else {
+        contents.loadURL('https://www.youtube.com/')
+      }
+    }, 0)
+    openSignInLater(url)
   })
 }
 
