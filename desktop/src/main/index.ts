@@ -5,7 +5,7 @@ import icon from '../../resources/icon.png?asset'
 import { setMainWindow } from './lib/main-window'
 import { bindDeeplink } from './lib/deeplink'
 import { genDesktopFile } from './lib/linux'
-import { interceptHttpRequest } from './lib/intercept'
+import { interceptHttpRequest, watchWebviewNavigations } from './lib/intercept'
 import { initMainChannel } from './ipc/main'
 import contextMenu from 'electron-context-menu'
 import { getUserAgent } from '@/lib/useragent'
@@ -178,6 +178,7 @@ app.whenReady().then(() => {
   electronApp.setAppUserModelId('ec.ytpremium.desktop')
 
   interceptHttpRequest()
+  watchWebviewNavigations()
 
   initMainChannel()
   initAccessDeviceChannel()

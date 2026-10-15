@@ -1,4 +1,4 @@
-import { net, session } from 'electron'
+import { app, net, session, type WebContents } from 'electron'
 import {
   RE_INTERCEPT,
   transformBrowseResponse,
@@ -235,4 +235,55 @@ export function toggleInterception(enabled: boolean) {
       ses.protocol.unhandle('https')
     }
   }
+}
+
+// YTPremium: Google sign-in (accounts.google.com and friends) must never go
+// through the https handler above. Its non-YouTube branch fetches with the
+// default session and follows redirects itself, so Google's cookies end up in
+// the wrong jar and the sign-in pages answer "401 ... formato incorrecto".
+// The renderer turns interception off on did-navigate, which is too late: the
+// first request to accounts.google.com has already gone through the handler.
+// Here it is turned off as soon as a webview starts (or is redirected to) a
+// main-frame navigation outside YouTube; the renderer turns it back on when
+// the tab is back on YouTube.
+function isYouTubeNavigation(url: string) {
+  try {
+    const { protocol, hostname } = new URL(url)
+    if (protocol !== 'https:' && protocol !== 'http:') return true
+    return (
+      hostname === 'youtube.com' ||
+      hostname === 'm.youtube.com' ||
+      hostname === 'www.youtube.com' ||
+      hostname === 'music.youtube.com' ||
+      hostname === 'youtu.be'
+    )
+  } catch {
+    return true
+  }
+}
+
+function watchWebview(contents: WebContents) {
+  const onNavigation = (event: any, legacyUrl?: string, _inPlace?: boolean, legacyMainFrame?: boolean) => {
+    const url: string | undefined = event?.url ?? legacyUrl
+    const isMainFrame: boolean | undefined = event?.isMainFrame ?? legacyMainFrame
+    const isSameDocument: boolean | undefined = event?.isSameDocument ?? _inPlace
+    if (!url || isMainFrame === false || isSameDocument) return
+    if (!isYouTubeNavigation(url)) {
+      toggleInterception(false)
+    }
+  }
+  contents.on('did-start-navigation', onNavigation)
+  contents.on('will-redirect', onNavigation)
+}
+
+let watchingWebviews = false
+
+export function watchWebviewNavigations() {
+  if (watchingWebviews) return
+  watchingWebviews = true
+  app.on('web-contents-created', (_event, contents) => {
+    if (contents.getType() === 'webview') {
+      watchWebview(contents)
+    }
+  })
 }
