@@ -542,7 +542,10 @@ export const MainPageContent: React.FC<{ contentJs: string }> = ({ contentJs }) 
 
   const syncSettingsToWebview = useCallback(() => {
     const settings = getContentSettingsSnapshot()
-    const value = JSON.stringify(settings)
+    // queueSize lets the page skip on its own when the app's queue is empty
+    // (see NouTube.next in content/noutube.ts): asking the app first does not
+    // work in the background, where its events only arrive once it is opened.
+    const value = JSON.stringify({ ...settings, queueSize: queue$.bookmarks.get().length })
     for (const ref of nativeViews()) {
       ref.executeJavaScript(
         `localStorage.setItem('nou:settings', '${value}'); window.NouTube?.setSettings?.(${value})`,
@@ -729,9 +732,13 @@ export const MainPageContent: React.FC<{ contentJs: string }> = ({ contentJs }) 
                 updateUrl(nextUrl)
               }
             } else if (manualNext) {
-              // Call the player directly: NouTube.next() would bridge back here.
+              // Skip in the page directly: NouTube.next() would bridge back here.
               const ref = source === 'player' ? playerRef.current : nativeRef.current
-              ref?.executeJavaScript('document.getElementById("movie_player")?.nextVideo()')
+              // skipToNext() handles what nextVideo() alone cannot: YouTube
+              // Music's own queue (shuffle) and lone videos (see noutube.ts).
+              ref?.executeJavaScript(
+                'window.NouTube?.skipToNext ? NouTube.skipToNext() : document.getElementById("movie_player")?.nextVideo()',
+              )
             }
           }
           break
@@ -815,14 +822,17 @@ export const MainPageContent: React.FC<{ contentJs: string }> = ({ contentJs }) 
     if (webview) {
       setBrowseWebview(webview)
       const url = ui$.url.get()
+      // A link can arrive before this view mounts. The URL observer sends
+      // watch links to the player, so the browsing view needs Home underneath.
+      const browseUrl = isSplitWatchEnabled() && isWatchUrl(url) ? 'https://m.youtube.com/' : url
       ;(async () => {
         try {
           const location = await webview.executeJavaScript('document.location.href')
           if (location == 'about:blank') {
-            webview.loadUrl(url)
+            webview.loadUrl(browseUrl)
           }
         } catch (e) {
-          webview.loadUrl(url)
+          webview.loadUrl(browseUrl)
         }
       })()
     }
@@ -946,6 +956,7 @@ export const MainPageContent: React.FC<{ contentJs: string }> = ({ contentJs }) 
   useObserveEffect(settings$.translateComments, () => syncSettingsToWebview())
   useObserveEffect(settings$.translationTargetLanguage, () => syncSettingsToWebview())
   useObserveEffect(settings$.useSystemCaptionStyle, () => syncSettingsToWebview())
+  useObserveEffect(queue$.bookmarks, () => syncSettingsToWebview())
 
   // Track whether Android runs us on a desktop-class screen. The manual
   // desktop-site override only lasts for one such session, so drop it whenever
