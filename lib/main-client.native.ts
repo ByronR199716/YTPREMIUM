@@ -17,6 +17,7 @@ export type FormatOption = {
 
 export interface MainClient {
   clearData(): Promise<void> | void
+  signOutAll(): Promise<void> | void
   toggleInterception(enabled: boolean): Promise<void> | void
   listFormats(url: string, useCookies: boolean): Promise<{ title: string; formats: FormatOption[] }>
   downloadVideo(url: string, formatId: string, outputDir: string, useCookies: boolean): Promise<void>
@@ -46,6 +47,7 @@ const nativeModule = NouTubeViewModule as NouTubeDownloadClient
 
 export const mainClient: MainClient = {
   async clearData() {},
+  async signOutAll() {},
   async toggleInterception() {},
   async listFormats(url, useCookies) {
     if (typeof nativeModule.listFormats !== 'function') {

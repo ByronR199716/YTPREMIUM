@@ -934,6 +934,17 @@ export const SettingsToolsContent = () => {
     })
   }
 
+  const signOutAndSwitch = () => {
+    showConfirm(t('settings.signOut.confirmTitle'), t('settings.signOut.confirmBody'), async () => {
+      try {
+        await mainClient.signOutAll()
+        showToast(t('settings.signOut.done'))
+      } catch (e) {
+        console.error('signOutAll failed', e)
+      }
+    })
+  }
+
   const handleUpdateYtDlp = async () => {
     setUpdatingYtDlp(true)
     try {
@@ -960,6 +971,15 @@ export const SettingsToolsContent = () => {
             onPress={() => ui$.sleepTimerModalOpen.set(true)}
           />
         ) : null}
+        {nIf(
+          isWeb,
+          <SettingsActionRow
+            label={t('settings.signOut.label')}
+            description={t('settings.signOut.hint')}
+            icon="logout"
+            onPress={signOutAndSwitch}
+          />,
+        )}
         <SettingsActionRow
           label={t('settings.webview.clearLabel')}
           description="Cookies and browsing state"

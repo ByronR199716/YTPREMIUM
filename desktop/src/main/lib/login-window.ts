@@ -16,6 +16,14 @@ const DEFAULT_SIGN_IN_URL =
   'https://accounts.google.com/ServiceLogin?service=youtube&uilel=3&passive=true&continue=https%3A%2F%2Fwww.youtube.com%2Fsignin%3Faction_handle_signin%3Dtrue%26app%3Ddesktop%26hl%3Des%26next%3Dhttps%253A%252F%252Fwww.youtube.com%252F&hl=es'
 
 let loginWindow: BrowserWindow | null = null
+let reloadTabsOnClose = true
+
+export function closeLoginWindow({ reloadTabs = true } = {}) {
+  if (loginWindow && !loginWindow.isDestroyed()) {
+    reloadTabsOnClose = reloadTabs
+    loginWindow.close()
+  }
+}
 let headersInstalled = false
 
 function installSignInHeaders() {
@@ -98,7 +106,8 @@ export async function openLoginWindow(url = DEFAULT_SIGN_IN_URL) {
   win.on('closed', () => {
     loginWindow = null
     toggleInterception(true)
-    reloadYouTubeTabs()
+    if (reloadTabsOnClose) reloadYouTubeTabs()
+    reloadTabsOnClose = true
   })
 
   // Google's redirects abort the first load (ERR_ABORTED); that is expected.

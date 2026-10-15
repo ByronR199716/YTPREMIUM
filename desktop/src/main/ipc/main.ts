@@ -1,5 +1,6 @@
 import { setInterceptionBlockAds, setInterceptionBlocklist, toggleInterception } from 'main/lib/intercept.js'
 import { openLoginWindow } from 'main/lib/login-window.js'
+import { signOutAll } from 'main/lib/sign-out.js'
 import { ensureYtDlp, updateYtDlp } from 'main/lib/ytdlp.js'
 import { checkForUpdate, isUpdateSupported, quitAndInstall } from 'main/lib/auto-update.js'
 import { consumePendingDeeplinks } from 'main/lib/deeplink.js'
@@ -12,10 +13,11 @@ import fs from 'fs/promises'
 import path from 'path'
 
 const interfaces = {
-  clearData: () => {
-    session.fromPartition('persist:webview').clearData()
-    session.fromPartition('').clearData({ origins: ['https://music.youtube.com', 'https://www.youtube.com'] })
+  clearData: async () => {
+    await session.fromPartition('persist:webview').clearData()
+    await session.fromPartition('').clearData({ origins: ['https://music.youtube.com', 'https://www.youtube.com'] })
   },
+  signOutAll,
   fetchFeed: async (url: string) => {
     try {
       const controller = new AbortController()

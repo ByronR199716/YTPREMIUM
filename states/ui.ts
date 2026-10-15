@@ -147,7 +147,7 @@ onClearData$.on(async () => {
     return
   }
   if (isWeb) {
-    mainClient.clearData()
+    await mainClient.clearData()
     webview.executeJavaScript('document.location.reload()')
   } else {
     webview.clearData()

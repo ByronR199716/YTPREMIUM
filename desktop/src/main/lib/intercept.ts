@@ -255,13 +255,55 @@ function isSignInUrl(url: string) {
 }
 
 let pendingSignIn = false
+let pendingSignOut = false
+
+// YouTube's own "Salir" (youtube.com/logout → accounts.google.com/Logout) and
+// Google's "Agregar cuenta" (AddSession): both mean a different account is
+// next, so the app wipes Google's memory of this browser first (sign-out.ts).
+function isSignOutUrl(url: string) {
+  try {
+    const { hostname, pathname } = new URL(url)
+    const path = pathname.toLowerCase()
+    if (hostname === 'accounts.google.com') {
+      return path.startsWith('/logout')
+    }
+    return (
+      (hostname === 'youtube.com' || hostname.endsWith('.youtube.com')) && (path === '/logout' || path.startsWith('/logout/'))
+    )
+  } catch {
+    return false
+  }
+}
+
+function isAddAccountUrl(url: string) {
+  try {
+    const { hostname, pathname, search } = new URL(url)
+    return hostname === 'accounts.google.com' && /addsession/i.test(pathname + search)
+  } catch {
+    return false
+  }
+}
+
+function signOutLater(then?: () => void) {
+  if (pendingSignOut) return
+  pendingSignOut = true
+  setTimeout(() => {
+    void import('./sign-out')
+      .then(({ signOutAll }) => signOutAll())
+      .catch((e) => console.error('Sign-out failed:', e))
+      .finally(() => {
+        pendingSignOut = false
+        then?.()
+      })
+  }, 0)
+}
 
 // Never stop or start navigations from inside a navigation event: Chromium
 // crashes the whole app if a navigation is cancelled while it is still being
 // set up (the app closed as soon as "Acceder" was clicked in pc-build-7).
 // Only the cancellable events call preventDefault; everything else is
 // deferred to the next turn of the event loop.
-function openSignInLater(url: string) {
+function openSignInLater(url?: string) {
   if (pendingSignIn) return
   pendingSignIn = true
   setTimeout(() => {
@@ -282,8 +324,18 @@ function watchWebview(contents: WebContents) {
   // Cancellable: the tab stays where it was and the sign-in window opens.
   const onCancellable = (event: any, legacyUrl?: string, _inPlace?: boolean, legacyMainFrame?: boolean) => {
     const { url, isMainFrame } = navigationDetails(event, legacyUrl, legacyMainFrame)
-    if (!url || isMainFrame === false || !isSignInUrl(url)) return
+    if (!url || isMainFrame === false) return
+    if (isSignOutUrl(url)) {
+      event?.preventDefault?.()
+      signOutLater()
+      return
+    }
+    if (!isSignInUrl(url)) return
     event?.preventDefault?.()
+    if (isAddAccountUrl(url)) {
+      signOutLater(() => openSignInLater())
+      return
+    }
     openSignInLater(url)
   }
   contents.on('will-navigate', onCancellable)
@@ -292,6 +344,10 @@ function watchWebview(contents: WebContents) {
   // Anything that still ends up on Google inside a tab (typed URL, loadURL):
   // once it has committed, go back and open the sign-in window instead.
   contents.on('did-navigate', (_event, url) => {
+    if (isSignOutUrl(url)) {
+      signOutLater()
+      return
+    }
     if (!isSignInUrl(url)) return
     setTimeout(() => {
       if (contents.isDestroyed()) return

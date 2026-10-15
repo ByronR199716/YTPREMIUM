@@ -386,6 +386,13 @@
       "button": "Login YouTube"
     },
     "openUrlLabel": "Open supported URL directly",
+    "signOut": {
+      "label": "Sign out / switch account",
+      "hint": "Removes the Google and YouTube account from this app. Use it before signing in with another account.",
+      "confirmTitle": "Sign out",
+      "confirmBody": "Your YouTube account will be signed out and Google data removed from this app. Your access code and settings are kept.",
+      "done": "Signed out. You can sign in with another account now."
+    },
     "webview": {
       "clearLabel": "Clear webview data"
     },

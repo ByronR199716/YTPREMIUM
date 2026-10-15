@@ -278,6 +278,13 @@
       "button": "Iniciar sesión en YouTube"
     },
     "openUrlLabel": "Abrir URL compatible directamente",
+    "signOut": {
+      "label": "Cerrar sesión / cambiar de cuenta",
+      "hint": "Borra la cuenta de Google y YouTube de esta app. Úsalo antes de entrar con otra cuenta.",
+      "confirmTitle": "Cerrar sesión",
+      "confirmBody": "Se cerrará tu cuenta de YouTube y se borrarán los datos de Google de esta app. Tu código de acceso y tus ajustes se conservan.",
+      "done": "Sesión cerrada. Ya puedes entrar con otra cuenta."
+    },
     "webview": {
       "clearLabel": "Borrar datos de la vista web"
     },
