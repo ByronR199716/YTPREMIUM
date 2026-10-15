@@ -4,11 +4,13 @@ import { createMMKV } from 'react-native-mmkv'
 
 /**
  * YTPremium: aviso que sale una sola vez en el celular al abrir la versión que lo
- * trae (1.0.9). Pedido por el admin: si tras actualizar fallan las descargas,
- * reinstalar con el enlace nuevo lo arregla (vuelve a la yt-dlp limpia).
+ * trae. Pedido por el admin: si tras actualizar fallan las descargas, borrar los
+ * datos de la app lo arregla. Reinstalar no siempre sirve: la copia de seguridad
+ * automática de Android devuelve los datos viejos (comprobado con la 1.0.9).
+ * v1 (1.0.9) decía "desinstala y vuelve a instalar"; v2 sale otra vez con el texto corregido.
  * Para mostrar otro aviso más adelante, cambiar NOTICE_KEY.
  */
-const NOTICE_KEY = 'notice_reinstall_downloads_v1'
+const NOTICE_KEY = 'notice_reinstall_downloads_v2'
 const ACCENT = '#7C4DFF'
 
 let storage: ReturnType<typeof createMMKV> | null = null
@@ -39,10 +41,13 @@ export const PostUpdateNotice = () => {
         <View className="w-full rounded-3xl bg-zinc-900 p-6" style={{ maxWidth: 420 }}>
           <Text className="mb-3 text-xl font-bold text-white">Aviso importante</Text>
           <Text className="text-base leading-6 text-zinc-300">
-            Si la descarga de los videos falla, por favor desinstala la aplicación y vuelve a instalarla.
+            Si la descarga de los videos falla, borra los datos de la aplicación:
+          </Text>
+          <Text className="mt-3 text-base font-bold leading-6 text-white">
+            Ajustes del teléfono {'>'} Apps {'>'} YTPremium {'>'} Almacenamiento {'>'} Borrar datos
           </Text>
           <Text className="mt-3 text-base leading-6 text-zinc-300">
-            Pide el enlace actualizado a tu administrador.
+            Después abre YTPremium y vuelve a ingresar tu código.
           </Text>
           <View className="mt-6 flex-row justify-end">
             <Pressable
