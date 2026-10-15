@@ -171,12 +171,76 @@ function swallow(event: TouchEvent) {
   }
 }
 
+// YouTube speeds the video up to 2x while one finger is held on the player.
+// The first finger of a pinch lands alone, so YouTube starts that hold before
+// the second one arrives, and since the rest of the gesture is swallowed it
+// never sees the finger lift. So: remember the speed while a single finger is
+// down, tell YouTube that touch was cancelled as soon as it becomes a pinch,
+// and put the speed back when the pinch ends.
+let rateBeforeTouch: number | undefined
+let cancelling = false
+
+function getRate() {
+  const host = getFullscreenElement()
+  const video = host && getVideo(host)
+  return video?.playbackRate
+}
+
+function restoreRate() {
+  const rate = rateBeforeTouch
+  if (!rate) {
+    return
+  }
+  const host = getFullscreenElement()
+  const video = host && getVideo(host)
+  const player: any = document.getElementById('movie_player')
+  if (video && Math.abs(video.playbackRate - rate) > 0.01) {
+    if (typeof player?.setPlaybackRate == 'function') {
+      player.setPlaybackRate(rate)
+    }
+    video.playbackRate = rate
+  }
+}
+
+function cancelHeldTouch(event: TouchEvent) {
+  const first = event.touches[0]
+  const target = first?.target
+  if (!first || !target) {
+    return
+  }
+  cancelling = true
+  try {
+    target.dispatchEvent(
+      new TouchEvent('touchcancel', {
+        bubbles: true,
+        cancelable: false,
+        composed: true,
+        touches: [],
+        targetTouches: [],
+        changedTouches: [first],
+      }),
+    )
+  } catch {
+    // Older WebViews without the TouchEvent constructor: restoreRate covers it.
+  } finally {
+    cancelling = false
+  }
+}
+
 function onTouchStart(event: TouchEvent) {
+  if (cancelling) {
+    return
+  }
+  if (event.touches.length === 1 && !pinching) {
+    rateBeforeTouch = getRate()
+  }
   if (event.touches.length === 2 && isActive()) {
     pinching = true
     decided = false
     startDistance = distance(event.touches)
     swallow(event)
+    cancelHeldTouch(event)
+    restoreRate()
   } else if (pinching) {
     swallow(event)
   }
@@ -201,12 +265,16 @@ function onTouchMove(event: TouchEvent) {
 }
 
 function onTouchEnd(event: TouchEvent) {
-  if (!pinching) {
+  if (cancelling || !pinching) {
     return
   }
   swallow(event)
   if (event.touches.length === 0) {
     pinching = false
+    // The hold timer may have fired just before the cancel landed.
+    restoreRate()
+    setTimeout(restoreRate, 150)
+    setTimeout(restoreRate, 600)
   }
 }
 

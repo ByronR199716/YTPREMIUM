@@ -4,7 +4,7 @@ import { installClickbaitThumbnails } from './clickbait'
 import { injectCSS } from './css'
 import { initNouTube } from './noutube'
 import { handleMutations, handleVideoPlayer } from './player'
-import { emit } from './utils'
+import { emit, isYTMusic } from './utils'
 import { handleDialogs } from './dialogs'
 import { handleMenu } from './menu'
 import { pinchToZoom } from './pinch'
@@ -15,6 +15,7 @@ import { interceptClipboard } from './clipboard'
 import { installWatchNavigation } from './watch-nav'
 import { installFullscreenControls } from './fullscreen-controls'
 import { installPinchToFill } from './pinch-fill'
+import { installBackgroundFrames } from './background-frames'
 import { installSystemCaptionStyle } from './captions'
 import { installEncodedAuthorNameFix } from './author-names'
 import { guardMediaSessionHandlers, installBackgroundGuard } from './background-guard'
@@ -36,6 +37,10 @@ try {
   // and the guard has to have wrapped them by then.
   if (window.isAndroid) {
     guardMediaSessionHandlers()
+    // YouTube Music only: m.youtube.com already skips fine in the background.
+    if (isYTMusic) {
+      installBackgroundFrames()
+    }
   }
 
   window.NouTube = initNouTube()
