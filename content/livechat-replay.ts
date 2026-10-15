@@ -88,7 +88,7 @@ function renderMessage(message: ReplayMessage) {
     const image = document.createElement('img')
     image.className = '_nou_replay_sticker'
     image.src = sticker
-    image.alt = message.sticker?.accessibility?.accessibilityData?.label || 'Paid sticker'
+    image.alt = message.sticker?.accessibility?.accessibilityData?.label || 'Sticker pagado'
     body.append(image)
   }
   row.append(body)
@@ -100,19 +100,19 @@ export function mountChatReplay(container: Element, videoId: string, initialCont
   panel.className = '_nou_replay_panel'
   const header = document.createElement('header')
   const title = document.createElement('span')
-  title.textContent = 'Chat replay'
+  title.textContent = 'Repetición del chat'
   header.append(title)
   const close = container.querySelector('._nou_livechat_close')
   if (close) header.append(close)
   const status = document.createElement('p')
-  status.textContent = 'Loading...'
+  status.textContent = 'Cargando...'
   const retry = document.createElement('button')
   retry.className = '_nou_replay_retry'
-  retry.textContent = 'Retry'
+  retry.textContent = 'Reintentar'
   retry.hidden = true
   const list = document.createElement('section')
   list.className = '_nou_replay_messages'
-  list.setAttribute('aria-label', 'Chat replay messages')
+  list.setAttribute('aria-label', 'Mensajes de la repetición del chat')
   panel.append(header, status, retry, list)
   container.prepend(panel)
 
@@ -178,7 +178,7 @@ export function mountChatReplay(container: Element, videoId: string, initialCont
     list.replaceChildren()
     rows.clear()
     status.hidden = false
-    status.textContent = 'Loading...'
+    status.textContent = 'Cargando...'
     retry.hidden = true
   }
 
@@ -215,12 +215,12 @@ export function mountChatReplay(container: Element, videoId: string, initialCont
       hasLoaded = true
       if (buffer.advance(player.getCurrentTime())) redraw()
       status.hidden = buffer.messages.size > 0
-      status.textContent = 'No messages at this point in the video.'
+      status.textContent = 'No hay mensajes en este punto del video.'
     } catch {
       if (stopped || requestRevision !== revision) return
       failed = true
       status.hidden = false
-      status.textContent = 'Unable to load chat replay.'
+      status.textContent = 'No se pudo cargar la repetición del chat.'
       retry.hidden = false
     } finally {
       if (requestRevision === revision) loading = false

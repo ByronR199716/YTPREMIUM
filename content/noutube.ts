@@ -90,6 +90,11 @@ function setBlocklist(next?: BlocklistSnapshot) {
 // the player's own next and previous would leave the playlist.
 function skipInPlaylist(direction: PlaylistDirection) {
   if (isYTMusic) return false
+  // YTPremium: with the app in the background the page's own navigation may
+  // not run until the app is opened again, while the player's nextVideo() /
+  // previousVideo() are known to work there for playlists and mixes. Keep
+  // those for the background and use the playlist walk in the foreground.
+  if (window.NouTubeBackground === true) return false
   const player = getPlayer()
   // The playlist panel only exists while it is expanded, so read what the
   // page handed to the player instead.
