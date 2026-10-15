@@ -271,9 +271,68 @@ function watchWebview(contents: WebContents) {
     if (!isYouTubeNavigation(url)) {
       toggleInterception(false)
     }
+    applySignInUserAgent(contents, url)
   }
   contents.on('did-start-navigation', onNavigation)
   contents.on('will-redirect', onNavigation)
+}
+
+// Google refuses to sign in from embedded Chromium ("No puedes acceder… es
+// posible que no sean seguros este navegador o la app"). It does not run that
+// check against Firefox, so the Google sign-in pages are asked for as Firefox,
+// without Chromium client hints; the tab goes back to its own user agent as
+// soon as it leaves accounts.google.com.
+const SIGN_IN_USER_AGENT =
+  process.platform === 'darwin'
+    ? 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:151.0) Gecko/20100101 Firefox/151.0'
+    : process.platform === 'linux'
+      ? 'Mozilla/5.0 (X11; Linux x86_64; rv:151.0) Gecko/20100101 Firefox/151.0'
+      : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:151.0) Gecko/20100101 Firefox/151.0'
+
+const SIGN_IN_HOSTS = ['accounts.google.com']
+
+function isSignInUrl(url: string) {
+  try {
+    return SIGN_IN_HOSTS.includes(new URL(url).hostname)
+  } catch {
+    return false
+  }
+}
+
+const originalUserAgents = new WeakMap<WebContents, string>()
+
+function applySignInUserAgent(contents: WebContents, url: string) {
+  if (isSignInUrl(url)) {
+    if (!originalUserAgents.has(contents)) {
+      originalUserAgents.set(contents, contents.getUserAgent())
+      contents.setUserAgent(SIGN_IN_USER_AGENT)
+    }
+  } else {
+    const original = originalUserAgents.get(contents)
+    if (original !== undefined) {
+      originalUserAgents.delete(contents)
+      contents.setUserAgent(original)
+    }
+  }
+}
+
+let signInHeadersInstalled = false
+
+function installSignInHeaders() {
+  if (signInHeadersInstalled) return
+  signInHeadersInstalled = true
+  const ses = session.fromPartition('persist:webview')
+  ses.webRequest.onBeforeSendHeaders({ urls: SIGN_IN_HOSTS.map((host) => `https://${host}/*`) }, (details, callback) => {
+    const headers = { ...details.requestHeaders }
+    for (const name of Object.keys(headers)) {
+      const lower = name.toLowerCase()
+      if (lower === 'user-agent' || lower.startsWith('sec-ch-ua')) {
+        delete headers[name]
+      }
+    }
+    headers['User-Agent'] = SIGN_IN_USER_AGENT
+    callback({ requestHeaders: headers })
+  })
 }
 
 let watchingWebviews = false
@@ -281,6 +340,7 @@ let watchingWebviews = false
 export function watchWebviewNavigations() {
   if (watchingWebviews) return
   watchingWebviews = true
+  installSignInHeaders()
   app.on('web-contents-created', (_event, contents) => {
     if (contents.getType() === 'webview') {
       watchWebview(contents)
