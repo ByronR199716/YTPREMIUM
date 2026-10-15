@@ -257,10 +257,13 @@ function onTouchMove(event: TouchEvent) {
   const ratio = distance(event.touches) / startDistance
   if (ratio >= spreadRatio) {
     decided = true
-    if (!isFillSaved()) setFill(true)
+    // Always apply, even if "fill" is already the saved choice: the saved
+    // value can be ahead of the screen (applied before the layout settled, or
+    // left over from an older version), and then spreading must still work.
+    setFill(true)
   } else if (ratio <= pinchRatio) {
     decided = true
-    if (isFillSaved()) setFill(false)
+    setFill(false)
   }
 }
 
@@ -292,7 +295,14 @@ export function installPinchToFill() {
   const onFullscreenChange = () => {
     pinching = false
     if (getFullscreenElement()) {
+      // The fullscreen layout (rotation, YouTube resizing the player) settles
+      // over a few hundred ms; apply again once it has.
       applyFill()
+      for (const ms of [150, 400, 900]) {
+        setTimeout(() => {
+          if (getFullscreenElement()) applyFill()
+        }, ms)
+      }
     } else {
       clearFill()
       document.getElementById(toastId)?.remove()
