@@ -48,7 +48,10 @@ export function installBackgroundFrames() {
     return id
   }
 
-  window.cancelAnimationFrame = (id: number) => {
+  window.cancelAnimationFrame = (id: number | null | undefined) => {
+    if (id == null) {
+      return
+    }
     const timer = timers.get(id)
     if (timer !== undefined) {
       clearTimeout(timer)
