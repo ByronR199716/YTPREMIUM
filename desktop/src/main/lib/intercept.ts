@@ -237,28 +237,20 @@ export function toggleInterception(enabled: boolean) {
   }
 }
 
-// YTPremium: Google sign-in (accounts.google.com and friends) must never go
-// through the https handler above. Its non-YouTube branch fetches with the
-// default session and follows redirects itself, so Google's cookies end up in
-// the wrong jar and the sign-in pages answer "401 ... formato incorrecto".
-// The renderer turns interception off on did-navigate, which is too late: the
-// first request to accounts.google.com has already gone through the handler.
-// Here it is turned off as soon as a webview starts (or is redirected to) a
-// main-frame navigation outside YouTube; the renderer turns it back on when
-// the tab is back on YouTube.
-function isYouTubeNavigation(url: string) {
+// YTPremium: Google sign-in never happens inside the YouTube tabs.
+// - The https handler above breaks it (Google's cookies land in the wrong
+//   jar: "401 ... formato incorrecto").
+// - Google refuses embedded Chromium ("No puedes acceder").
+// - Switching the tab's user agent in the middle of the redirect chain makes
+//   Chromium reload the page and the sign-in hangs.
+// So any tab navigation to accounts.google.com is cancelled and the sign-in
+// opens in its own window (login-window.ts), which is Firefox for its whole
+// life and runs with the interception off.
+function isSignInUrl(url: string) {
   try {
-    const { protocol, hostname } = new URL(url)
-    if (protocol !== 'https:' && protocol !== 'http:') return true
-    return (
-      hostname === 'youtube.com' ||
-      hostname === 'm.youtube.com' ||
-      hostname === 'www.youtube.com' ||
-      hostname === 'music.youtube.com' ||
-      hostname === 'youtu.be'
-    )
+    return new URL(url).hostname === 'accounts.google.com'
   } catch {
-    return true
+    return false
   }
 }
 
@@ -266,72 +258,20 @@ function watchWebview(contents: WebContents) {
   const onNavigation = (event: any, legacyUrl?: string, _inPlace?: boolean, legacyMainFrame?: boolean) => {
     const url: string | undefined = event?.url ?? legacyUrl
     const isMainFrame: boolean | undefined = event?.isMainFrame ?? legacyMainFrame
-    const isSameDocument: boolean | undefined = event?.isSameDocument ?? _inPlace
-    if (!url || isMainFrame === false || isSameDocument) return
-    if (!isYouTubeNavigation(url)) {
-      toggleInterception(false)
-    }
-    applySignInUserAgent(contents, url)
+    if (!url || isMainFrame === false || !isSignInUrl(url)) return
+    event?.preventDefault?.()
+    void import('./login-window').then(({ openLoginWindow }) => openLoginWindow(url))
   }
-  contents.on('did-start-navigation', onNavigation)
+  contents.on('will-navigate', onNavigation)
   contents.on('will-redirect', onNavigation)
-}
-
-// Google refuses to sign in from embedded Chromium ("No puedes acceder… es
-// posible que no sean seguros este navegador o la app"). It does not run that
-// check against Firefox, so the Google sign-in pages are asked for as Firefox,
-// without Chromium client hints; the tab goes back to its own user agent as
-// soon as it leaves accounts.google.com.
-const SIGN_IN_USER_AGENT =
-  process.platform === 'darwin'
-    ? 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:151.0) Gecko/20100101 Firefox/151.0'
-    : process.platform === 'linux'
-      ? 'Mozilla/5.0 (X11; Linux x86_64; rv:151.0) Gecko/20100101 Firefox/151.0'
-      : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:151.0) Gecko/20100101 Firefox/151.0'
-
-const SIGN_IN_HOSTS = ['accounts.google.com']
-
-function isSignInUrl(url: string) {
-  try {
-    return SIGN_IN_HOSTS.includes(new URL(url).hostname)
-  } catch {
-    return false
-  }
-}
-
-const originalUserAgents = new WeakMap<WebContents, string>()
-
-function applySignInUserAgent(contents: WebContents, url: string) {
-  if (isSignInUrl(url)) {
-    if (!originalUserAgents.has(contents)) {
-      originalUserAgents.set(contents, contents.getUserAgent())
-      contents.setUserAgent(SIGN_IN_USER_AGENT)
-    }
-  } else {
-    const original = originalUserAgents.get(contents)
-    if (original !== undefined) {
-      originalUserAgents.delete(contents)
-      contents.setUserAgent(original)
-    }
-  }
-}
-
-let signInHeadersInstalled = false
-
-function installSignInHeaders() {
-  if (signInHeadersInstalled) return
-  signInHeadersInstalled = true
-  const ses = session.fromPartition('persist:webview')
-  ses.webRequest.onBeforeSendHeaders({ urls: SIGN_IN_HOSTS.map((host) => `https://${host}/*`) }, (details, callback) => {
-    const headers = { ...details.requestHeaders }
-    for (const name of Object.keys(headers)) {
-      const lower = name.toLowerCase()
-      if (lower === 'user-agent' || lower.startsWith('sec-ch-ua')) {
-        delete headers[name]
-      }
-    }
-    headers['User-Agent'] = SIGN_IN_USER_AGENT
-    callback({ requestHeaders: headers })
+  contents.on('did-start-navigation', (event: any, legacyUrl?: string, _inPlace?: boolean, legacyMainFrame?: boolean) => {
+    // Navigations will-navigate does not see (typed URL, loadURL): stop them
+    // here and send them to the sign-in window too.
+    const url: string | undefined = event?.url ?? legacyUrl
+    const isMainFrame: boolean | undefined = event?.isMainFrame ?? legacyMainFrame
+    if (!url || isMainFrame === false || !isSignInUrl(url)) return
+    contents.stop()
+    void import('./login-window').then(({ openLoginWindow }) => openLoginWindow(url))
   })
 }
 
@@ -340,7 +280,6 @@ let watchingWebviews = false
 export function watchWebviewNavigations() {
   if (watchingWebviews) return
   watchingWebviews = true
-  installSignInHeaders()
   app.on('web-contents-created', (_event, contents) => {
     if (contents.getType() === 'webview') {
       watchWebview(contents)
