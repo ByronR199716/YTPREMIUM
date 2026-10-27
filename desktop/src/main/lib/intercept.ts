@@ -226,8 +226,19 @@ export function interceptHttpRequest() {
   })
 }
 
+// While the Google sign-in window is open the interception stays off, even if
+// a YouTube tab navigates and the renderer asks to turn it back on: the
+// handler runs on the main thread (the one that also delivers keystrokes) and
+// would send Google's requests through the wrong session.
+let interceptionLocked = false
+
+export function setInterceptionLocked(locked: boolean) {
+  interceptionLocked = locked
+}
+
 export function toggleInterception(enabled: boolean) {
   if (enabled) {
+    if (interceptionLocked) return
     interceptHttpRequest()
   } else {
     const ses = session.fromPartition('persist:webview')

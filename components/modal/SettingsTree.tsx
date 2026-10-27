@@ -326,11 +326,14 @@ export const SettingsTree = forwardRef<
               <NouText className="mt-2 text-xl font-semibold tracking-tight">v{version}</NouText>
             </View>
 
+            {/* Oculto a pedido del dueño (2026-10-27) hasta nuevo aviso. Para volver a
+                mostrarlo, quitar este comentario.
             <View className="rounded-[24px] bg-white dark:bg-zinc-900 px-5 py-4">
               <NouText className="text-sm leading-5 text-zinc-600 dark:text-zinc-400">
                 Basado en NouTube, software libre bajo licencia AGPL-3.0.
               </NouText>
             </View>
+            */}
           </View>
         )
 
