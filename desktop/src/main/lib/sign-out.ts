@@ -28,22 +28,8 @@ async function doSignOut() {
 
   // The YouTube tabs and the sign-in window: nothing else lives here.
   const webviewSession = session.fromPartition('persist:webview')
-  // Everything except the HTTP cache: the cache holds no identity, and keeping
-  // it lets Google's sign-in page (and YouTube) load fast the next time.
-  await webviewSession
-    .clearData({
-      dataTypes: [
-        'backgroundFetch',
-        'cookies',
-        'downloads',
-        'fileSystems',
-        'indexedDB',
-        'localStorage',
-        'serviceWorkers',
-        'webSQL',
-      ],
-    })
-    .catch((e) => console.error('clearData failed:', e))
+  await webviewSession.clearData().catch((e) => console.error('clearData failed:', e))
+  await webviewSession.clearCache().catch(() => {})
   await webviewSession.clearAuthCache().catch(() => {})
   webviewSession.flushStorageData()
 

@@ -1,5 +1,5 @@
 import { BrowserWindow, session, webContents } from 'electron'
-import { setInterceptionLocked, toggleInterception } from './intercept'
+import { toggleInterception } from './intercept'
 import { mainWindow } from './main-window'
 
 // Google blocks sign-in from embedded Chromium but not from Firefox. The
@@ -30,20 +30,8 @@ function installSignInHeaders() {
   if (headersInstalled) return
   headersInstalled = true
   const ses = session.fromPartition('persist:webview')
-  // Only Google's sign-in hosts. Without a filter this ran on the main thread
-  // for every thumbnail and video chunk of the YouTube tabs too, and typing in
-  // the sign-in window lagged 3–4 s behind. Requests of other windows on
-  // these hosts pass through unchanged.
-  const filter = {
-    urls: [
-      'https://accounts.google.com/*',
-      'https://*.google.com/*',
-      'https://*.gstatic.com/*',
-      'https://*.googleusercontent.com/*',
-      'https://accounts.youtube.com/*',
-    ],
-  }
-  ses.webRequest.onBeforeSendHeaders(filter, (details, callback) => {
+  // Only the sign-in window's own requests: the YouTube tabs keep theirs.
+  ses.webRequest.onBeforeSendHeaders((details, callback) => {
     if (!loginWindow || loginWindow.isDestroyed() || details.webContentsId !== loginWindow.webContents.id) {
       callback({})
       return
@@ -70,18 +58,6 @@ function isSignedInLanding(url: string) {
   }
 }
 
-// A playing video keeps the app busy downloading while the user types the
-// email; the tabs are reloaded once the sign-in window closes anyway.
-function pauseYouTubeTabs() {
-  for (const contents of webContents.getAllWebContents()) {
-    if (contents.getType() === 'webview' && !contents.isDestroyed()) {
-      contents
-        .executeJavaScript('document.querySelectorAll("video,audio").forEach((m) => { try { m.pause() } catch {} })', false)
-        .catch(() => {})
-    }
-  }
-}
-
 function reloadYouTubeTabs() {
   for (const contents of webContents.getAllWebContents()) {
     if (contents.getType() === 'webview' && !contents.isDestroyed()) {
@@ -95,10 +71,8 @@ export async function openLoginWindow(url = DEFAULT_SIGN_IN_URL) {
     loginWindow.focus()
     return
   }
-  setInterceptionLocked(true)
   toggleInterception(false)
   installSignInHeaders()
-  pauseYouTubeTabs()
   const win = new BrowserWindow({
     width: 520,
     height: 720,
@@ -131,7 +105,6 @@ export async function openLoginWindow(url = DEFAULT_SIGN_IN_URL) {
   })
   win.on('closed', () => {
     loginWindow = null
-    setInterceptionLocked(false)
     toggleInterception(true)
     if (reloadTabsOnClose) reloadYouTubeTabs()
     reloadTabsOnClose = true
