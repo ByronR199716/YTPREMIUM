@@ -114,6 +114,7 @@ const getContentSettingsSnapshot = () => {
     blockAds,
     playbackRate,
     playbackQuality,
+    disableAutoplay,
     miniPlayer,
     pictureInPicture,
     showDislikes,
@@ -129,6 +130,7 @@ const getContentSettingsSnapshot = () => {
     blockAds,
     playbackRate,
     playbackQuality,
+    disableAutoplay,
     miniPlayer,
     pictureInPicture,
     showDislikes,
@@ -331,6 +333,7 @@ const DesktopTabView: React.FC<{
   useObserveEffect(settings$.blockAds, () => syncSettingsToWebview())
   useObserveEffect(settings$.playbackRate, () => syncSettingsToWebview())
   useObserveEffect(settings$.playbackQuality, () => syncSettingsToWebview())
+  useObserveEffect(settings$.disableAutoplay, () => syncSettingsToWebview())
   useObserveEffect(settings$.miniPlayer, () => syncSettingsToWebview())
   useObserveEffect(settings$.pictureInPicture, () => syncSettingsToWebview())
   useObserveEffect(settings$.showDislikes, () => syncSettingsToWebview())
@@ -721,7 +724,9 @@ export const MainPageContent: React.FC<{ contentJs: string }> = ({ contentJs }) 
             // Skipping counts as finished too, or the resume point would pull
             // every later skip back to the queue video that was skipped.
             trackQueueEnded(endedUrl)
-            const nextUrl = getNextQueueUrl(endedUrl)
+            const nextUrl = getNextQueueUrl(endedUrl, {
+              resumeUnrelated: manualNext || !settings$.disableAutoplay.get(),
+            })
             if (nextUrl) {
               if (isWeb) {
                 tabs$.updateTabUrl(nextUrl)
@@ -948,6 +953,7 @@ export const MainPageContent: React.FC<{ contentJs: string }> = ({ contentJs }) 
   useObserveEffect(settings$.blockAds, () => syncSettingsToWebview())
   useObserveEffect(settings$.playbackRate, () => syncSettingsToWebview())
   useObserveEffect(settings$.playbackQuality, () => syncSettingsToWebview())
+  useObserveEffect(settings$.disableAutoplay, () => syncSettingsToWebview())
   useObserveEffect(settings$.miniPlayer, () => syncSettingsToWebview())
   useObserveEffect(settings$.pictureInPicture, () => syncSettingsToWebview())
   useObserveEffect(settings$.showDislikes, () => syncSettingsToWebview())
