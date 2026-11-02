@@ -175,12 +175,15 @@ describe('openInPlayer', () => {
     expect(player.loaded).toEqual(['https://m.youtube.com/watch?v=early12345'])
   })
 
-  it('empties the kept-warm webview with about:blank when the video is closed (YTPremium)', () => {
+  it('empties the kept-warm webview onto the warm home page when the video is closed', () => {
     const player = fakePlayer()
     setPlayerWebview(player)
     openInPlayer('https://m.youtube.com/watch?v=abc123')
     closePlayer()
-    expect(player.loaded.at(-1)).toBe('about:blank')
+    expect(player.loaded.at(-1)).toBe('https://m.youtube.com/')
+    // Muted from its first script, whatever the scriptOnStart prop still says.
+    expect(player.startScripts.at(-1)).toContain('NouTubePlayerWarmup = true')
+    expect(player.startScripts[0]).toBeUndefined()
   })
 })
 
@@ -242,8 +245,7 @@ describe('player warmup', () => {
     openInPlayer('https://m.youtube.com/watch?v=second1234')
     await Promise.resolve()
     expect(player.scripts.some((script) => script.includes('second1234'))).toBe(true)
-    // YTPremium: closing empties the player with about:blank (see closePlayer).
-    expect(player.loaded.at(-1)).toBe('about:blank')
+    expect(player.loaded.at(-1)).toBe('https://m.youtube.com/')
   })
 
   it('falls back to a document load if the warmup bridge is not ready', async () => {
@@ -380,7 +382,7 @@ describe('setSplitPageUrl', () => {
 
     expect(ui$.playerUrl.get()).toBe('')
     expect(ui$.playerMode.get()).toBe('hidden')
-    expect(player.loaded.at(-1)).toBe('about:blank')
+    expect(player.loaded.at(-1)).toBe('https://m.youtube.com/')
     // No video left to own the audio, so the browsing side takes it back.
     expect(browse.scripts.at(-1)).toContain('setMuted?.(false)')
   })
