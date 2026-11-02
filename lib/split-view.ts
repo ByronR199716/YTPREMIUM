@@ -176,8 +176,11 @@ export function closePlayer() {
   ui$.playerPageUrl.set('')
   // Through the retrying load: emptying it is what stops the audio, so it has
   // to survive a webview that has not come up yet just as a video does.
+  // YTPremium: al cerrar se vacía con about:blank, como en NouTube 0.7.3. La
+  // 0.7.4 recargaba aquí la página de inicio completa (WARM_URL) y en el
+  // teléfono del dueño el siguiente video pasó de ~2 s a ~6 s.
   if (playerWebview) {
-    loadPlayerUrl(playerWebview, WARM_URL, playerLoadToken, WARM_SCRIPT)
+    loadPlayerUrl(playerWebview, 'about:blank', playerLoadToken)
   }
   syncForegroundWebview()
 }
