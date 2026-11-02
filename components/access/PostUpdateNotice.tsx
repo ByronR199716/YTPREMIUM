@@ -8,9 +8,10 @@ import { createMMKV } from 'react-native-mmkv'
  * datos de la app lo arregla. Reinstalar no siempre sirve: la copia de seguridad
  * automática de Android devuelve los datos viejos (comprobado con la 1.0.9).
  * v1 (1.0.9) decía "desinstala y vuelve a instalar"; v2 sale otra vez con el texto corregido.
+ * v3 (NouTube 0.7.4, 2026-11-02): mismo texto, sale una vez más tras esta actualización.
  * Para mostrar otro aviso más adelante, cambiar NOTICE_KEY.
  */
-const NOTICE_KEY = 'notice_reinstall_downloads_v2'
+const NOTICE_KEY = 'notice_reinstall_downloads_v3'
 const ACCENT = '#7C4DFF'
 
 let storage: ReturnType<typeof createMMKV> | null = null
