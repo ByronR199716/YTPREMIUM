@@ -427,6 +427,7 @@ export const MainPageContent: React.FC<{ contentJs: string }> = ({ contentJs }) 
   const loadError = (splitWatchView && playerFull ? loadErrors.player : loadErrors.browse) ?? null
   const buildPrelude = () =>
     `window.NouTubeInitialSettings = ${JSON.stringify(getContentSettingsSnapshot())};` +
+    `window.NouTubeHideShorts = ${settings$.hideShorts.get() ? 'true' : 'false'};` +
     `window.NouTubePreferH264 = ${settings$.preferH264.get() ? 'true' : 'false'};` +
     `window.NouTubeClickbaitThumbnail = ${JSON.stringify(settings$.clickbaitThumbnail.get())};` +
     `window.NouTubeUserStyles = ${JSON.stringify(getUserStylesSnapshot())};` +
@@ -442,6 +443,7 @@ export const MainPageContent: React.FC<{ contentJs: string }> = ({ contentJs }) 
   const userScriptsOnStart = buildUserScriptSources(getUserStylesSnapshot(userStylesState))
   const preludeJs =
     `window.NouTubeInitialSettings = ${JSON.stringify(contentSettings)};` +
+    `window.NouTubeHideShorts = ${hideShorts ? 'true' : 'false'};` +
     `window.NouTubePreferH264 = ${preferH264 ? 'true' : 'false'};` +
     `window.NouTubeClickbaitThumbnail = ${JSON.stringify(clickbaitThumbnail)};` +
     `window.NouTubeUserStyles = ${JSON.stringify(getUserStylesSnapshot())};` +
