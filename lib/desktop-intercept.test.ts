@@ -11,6 +11,7 @@ it('streams filtered get_watch player data through the Electron protocol handler
     'transfer-encoding': 'chunked',
   } })
   mock.module('electron', () => ({
+    app: { getPath: () => '/tmp', isPackaged: false },
     net: {},
     session: { fromPartition: () => ({
       setCertificateVerifyProc() {},
