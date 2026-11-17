@@ -183,6 +183,8 @@
     "hideMixPlaylist": "Ocultar listas de reproducción Mix",
     "miniPlayer": "Minirreproductor",
     "preferH264": "Preferir H.264 (bloquear VP9/AV1)",
+    "disableAutoplay": "Desactivar reproducción automática",
+    "disableAutoplayHint": "Mantiene apagada la reproducción automática de YouTube para que no salten videos recomendados. Las colas y listas siguen reproduciéndose.",
     "clickbaitThumbnail": {
       "label": "Evitar miniaturas clickbait",
       "hint": "Reemplazar las miniaturas del creador con fotogramas de vídeo autogenerados",
